@@ -199,23 +199,27 @@ struct RestoreTableView: View {
     }
 
     var setpathforrestore: some View {
-        EditValueErrorScheme(500, "Path for restore", $restore.pathforrestore,
-                             restore.verifyPathForRestore(restore.pathforrestore))
-            .foregroundColor(restore.verifyPathForRestore(restore.pathforrestore) ? Color.white : Color.red)
-            .onAppear {
-                if let pathforrestore = SharedReference.shared.pathforrestore {
-                    restore.pathforrestore = pathforrestore
-                }
+        EditValueErrorScheme(
+            500,
+            "Path for restore",
+            $restore.pathforrestore,
+            restore.verifyPathForRestore(restore.pathforrestore)
+        )
+        .foregroundColor(restore.verifyPathForRestore(restore.pathforrestore) ? Color.white : Color.red)
+        .onAppear {
+            if let pathforrestore = SharedReference.shared.pathforrestore {
+                restore.pathforrestore = pathforrestore
             }
-            .onChange(of: restore.pathforrestore) {
-                guard restore.verifyPathForRestore(restore.pathforrestore) else {
-                    return
-                }
-                if restore.pathforrestore.hasSuffix("/") == false {
-                    restore.pathforrestore.append("/")
-                }
-                SharedReference.shared.pathforrestore = restore.pathforrestore
+        }
+        .onChange(of: restore.pathforrestore) {
+            guard restore.verifyPathForRestore(restore.pathforrestore) else {
+                return
             }
+            if restore.pathforrestore.hasSuffix("/") == false {
+                restore.pathforrestore.append("/")
+            }
+            SharedReference.shared.pathforrestore = restore.pathforrestore
+        }
     }
 
     var setfilestorestore: some View {

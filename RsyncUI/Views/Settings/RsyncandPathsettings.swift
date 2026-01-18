@@ -93,46 +93,56 @@ struct RsyncandPathsettings: View {
     }
 
     var setrsyncpathlocalpath: some View {
-        EditValueErrorScheme(400, nil, $rsyncpathsettings.localrsyncpath,
-                             rsyncpathsettings.verifypathforrsync(rsyncpathsettings.localrsyncpath))
-            .foregroundColor(rsyncpathsettings.verifypathforrsync(rsyncpathsettings.localrsyncpath) ? Color.white : Color.red)
-            .onChange(of: rsyncpathsettings.localrsyncpath) {
-                guard rsyncpathsettings.verifypathforrsync(rsyncpathsettings.localrsyncpath) else {
-                    return
-                }
-                SharedReference.shared.localrsyncpath = rsyncpathsettings.localrsyncpath
-                if rsyncpathsettings.verifypathforrsync(rsyncpathsettings.localrsyncpath),
-                   rsyncpathsettings.setandvalidatepathforrsync(rsyncpathsettings.localrsyncpath) {
-                    Rsyncversion().getRsyncVersion()
-                }
+        EditValueErrorScheme(
+            400,
+            nil,
+            $rsyncpathsettings.localrsyncpath,
+            rsyncpathsettings.verifypathforrsync(rsyncpathsettings.localrsyncpath)
+        )
+        .foregroundColor(rsyncpathsettings.verifypathforrsync(rsyncpathsettings.localrsyncpath) ? Color.white : Color.red)
+        .onChange(of: rsyncpathsettings.localrsyncpath) {
+            guard rsyncpathsettings.verifypathforrsync(rsyncpathsettings.localrsyncpath) else {
+                return
             }
+            SharedReference.shared.localrsyncpath = rsyncpathsettings.localrsyncpath
+            if rsyncpathsettings.verifypathforrsync(rsyncpathsettings.localrsyncpath),
+               rsyncpathsettings.setandvalidatepathforrsync(rsyncpathsettings.localrsyncpath) {
+                Rsyncversion().getRsyncVersion()
+            }
+        }
     }
 
     var setrsyncpathdefault: some View {
-        EditValueScheme(400, SetandValidatepathforrsync().getpathforrsync(rsyncpathsettings.rsyncversion3),
-                        $rsyncpathsettings.localrsyncpath)
+        EditValueScheme(
+            400,
+            SetandValidatepathforrsync().getpathforrsync(rsyncpathsettings.rsyncversion3),
+            $rsyncpathsettings.localrsyncpath
+        )
     }
 
     var setpathforrestore: some View {
-        EditValueErrorScheme(400, "Path for restore",
-                             $rsyncpathsettings.temporarypathforrestore,
-                             rsyncpathsettings.verifyPathForRestore(rsyncpathsettings.temporarypathforrestore))
-            .foregroundColor(rsyncpathsettings.verifyPathForRestore(rsyncpathsettings.temporarypathforrestore) ?
-                Color.white : Color.red)
-            .onAppear {
-                if let pathforrestore = SharedReference.shared.pathforrestore {
-                    rsyncpathsettings.temporarypathforrestore = pathforrestore
-                }
+        EditValueErrorScheme(
+            400,
+            "Path for restore",
+            $rsyncpathsettings.temporarypathforrestore,
+            rsyncpathsettings.verifyPathForRestore(rsyncpathsettings.temporarypathforrestore)
+        )
+        .foregroundColor(rsyncpathsettings.verifyPathForRestore(rsyncpathsettings.temporarypathforrestore) ?
+            Color.white : Color.red)
+        .onAppear {
+            if let pathforrestore = SharedReference.shared.pathforrestore {
+                rsyncpathsettings.temporarypathforrestore = pathforrestore
             }
-            .onChange(of: rsyncpathsettings.temporarypathforrestore) {
-                guard rsyncpathsettings.verifyPathForRestore(rsyncpathsettings.temporarypathforrestore) else {
-                    return
-                }
-                if rsyncpathsettings.temporarypathforrestore.hasSuffix("/") == false {
-                    rsyncpathsettings.temporarypathforrestore.append("/")
-                }
-                SharedReference.shared.pathforrestore = rsyncpathsettings.temporarypathforrestore
+        }
+        .onChange(of: rsyncpathsettings.temporarypathforrestore) {
+            guard rsyncpathsettings.verifyPathForRestore(rsyncpathsettings.temporarypathforrestore) else {
+                return
             }
+            if rsyncpathsettings.temporarypathforrestore.hasSuffix("/") == false {
+                rsyncpathsettings.temporarypathforrestore.append("/")
+            }
+            SharedReference.shared.pathforrestore = rsyncpathsettings.temporarypathforrestore
+        }
     }
 
     var setmarkdays: some View {

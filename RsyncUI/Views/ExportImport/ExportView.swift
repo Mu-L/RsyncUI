@@ -109,9 +109,12 @@ struct ExportView: View {
     }
 
     var setfilename: some View {
-        EditValueScheme(150, "Filename export",
-                        $filenameexport)
-            .textContentType(.none)
+        EditValueScheme(
+            150,
+            "Filename export",
+            $filenameexport
+        )
+        .textContentType(.none)
     }
 
     func selectedConfigurations() -> [SynchronizeConfiguration] {

@@ -37,11 +37,14 @@ struct AddSchedule: View {
                 TextField("", text: $dateRunMonth)
                     .frame(width: 100)
 
-                EditValueErrorScheme(50, "",
-                                     $dateRunHour,
-                                     schedules.verifynextschedule(plannednextschedule: dateRunMonth + " " + dateRunHour))
-                    .foregroundColor(schedules.verifynextschedule(plannednextschedule: dateRunMonth + " " + dateRunHour)
-                        ? Color.white : Color.red)
+                EditValueErrorScheme(
+                    50,
+                    "",
+                    $dateRunHour,
+                    schedules.verifynextschedule(plannednextschedule: dateRunMonth + " " + dateRunHour)
+                )
+                .foregroundColor(schedules.verifynextschedule(plannednextschedule: dateRunMonth + " " + dateRunHour)
+                    ? Color.white : Color.red)
 
                 ConditionalGlassButton(
                     systemImage: "arrow.trianglehead.clockwise",

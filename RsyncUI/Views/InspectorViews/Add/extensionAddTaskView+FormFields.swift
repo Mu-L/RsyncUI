@@ -87,13 +87,21 @@ extension AddTaskView {
 
     var remoteuserandserver: some View {
         Section(header: Text("Remote parameters").modifier(FixedTag(200, .leading)).font(.title3).fontWeight(.bold)) {
-            remoteField(value: $newdata.remoteuser, placeholder: "Add remote user",
-                        focus: .remoteuserField, selectedValue: newdata.selectedconfig?.offsiteUsername,
-                        showErrorBorder: newdata.remoteuser.isEmpty && !newdata.remoteserver.isEmpty)
-            remoteField(value: $newdata.remoteserver, placeholder: "Add remote server",
-                        focus: .remoteserverField, selectedValue: newdata.selectedconfig?.offsiteServer,
-                        submitLabel: .return,
-                        showErrorBorder: !newdata.remoteuser.isEmpty && newdata.remoteserver.isEmpty)
+            remoteField(
+                value: $newdata.remoteuser,
+                placeholder: "Add remote user",
+                focus: .remoteuserField,
+                selectedValue: newdata.selectedconfig?.offsiteUsername,
+                showErrorBorder: newdata.remoteuser.isEmpty && !newdata.remoteserver.isEmpty
+            )
+            remoteField(
+                value: $newdata.remoteserver,
+                placeholder: "Add remote server",
+                focus: .remoteserverField,
+                selectedValue: newdata.selectedconfig?.offsiteServer,
+                submitLabel: .return,
+                showErrorBorder: !newdata.remoteuser.isEmpty && newdata.remoteserver.isEmpty
+            )
         }
     }
 
