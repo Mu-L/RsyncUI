@@ -76,8 +76,13 @@ struct RestoreTableView: View {
                     }
 
                     if gettingfilelist { ProgressView() }
-                    if restore.restorefilesinprogress { SynchronizeProgressView(max: restore.max, progress: restore.progress,
-                                                                                statusText: "Restoring...") }
+                    if restore.restorefilesinprogress {
+                        SynchronizeProgressView(
+                            max: restore.max,
+                            progress: restore.progress,
+                            statusText: "Restoring..."
+                        )
+                    }
 
                     if restore.selectedconfig?.offsiteServer.isEmpty == true {
                         DismissafterMessageView(dismissafter: 2, mytext: "Use macOS Finder to restore files from attached discs.")
@@ -223,8 +228,11 @@ struct RestoreTableView: View {
     }
 
     var setfilestorestore: some View {
-        EditValueScheme(500, "Select files to restore or \"./.\" for full restore",
-                        $restore.filestorestore)
+        EditValueScheme(
+            500,
+            "Select files to restore or \"./.\" for full restore",
+            $restore.filestorestore
+        )
     }
 
     var snapshotfolderpicker: some View {

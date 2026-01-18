@@ -44,15 +44,23 @@ final class ObservableSchedules {
     private func computeDailySchedule(profile: String?, dateRun: Date) {
         var dateComponents = DateComponents()
         dateComponents.day = 1
-        computeRepeatingSchedule(profile: profile, dateRun: dateRun, dateComponents: dateComponents,
-                                 scheduleType: ScheduleType.daily.rawValue)
+        computeRepeatingSchedule(
+            profile: profile,
+            dateRun: dateRun,
+            dateComponents: dateComponents,
+            scheduleType: ScheduleType.daily.rawValue
+        )
     }
 
     private func computeWeeklySchedule(profile: String?, dateRun: Date) {
         var dateComponents = DateComponents()
         dateComponents.day = 7
-        computeRepeatingSchedule(profile: profile, dateRun: dateRun, dateComponents: dateComponents,
-                                 scheduleType: ScheduleType.weekly.rawValue)
+        computeRepeatingSchedule(
+            profile: profile,
+            dateRun: dateRun,
+            dateComponents: dateComponents,
+            scheduleType: ScheduleType.weekly.rawValue
+        )
     }
 
     private func computeRepeatingSchedule(profile: String?, dateRun: Date, dateComponents: DateComponents, scheduleType: String) {
@@ -61,11 +69,21 @@ final class ObservableSchedules {
         guard timeInterval > 0 else { return }
 
         let index = calculateScheduleIndex(timeInterval: timeInterval, dayInterval: dateComponents.day ?? 0)
-        appendInitialScheduleIfNeeded(profile: profile, dateRun: dateRun, lastDayOfMonth: lastdateinnextmonth,
-                                      scheduleType: scheduleType)
+        appendInitialScheduleIfNeeded(
+            profile: profile,
+            dateRun: dateRun,
+            lastDayOfMonth: lastdateinnextmonth,
+            scheduleType: scheduleType
+        )
 
-        addFutureSchedules(profile: profile, startDate: dateRun, dateComponents: dateComponents,
-                           scheduleType: scheduleType, count: index, lastDayOfMonth: lastdateinnextmonth)
+        addFutureSchedules(
+            profile: profile,
+            startDate: dateRun,
+            dateComponents: dateComponents,
+            scheduleType: scheduleType,
+            count: index,
+            lastDayOfMonth: lastdateinnextmonth
+        )
     }
 
     private func calculateScheduleIndex(timeInterval: TimeInterval, dayInterval: Int) -> Int {

@@ -13,9 +13,15 @@ struct FixedTag: ViewModifier {
     var alignment: Alignment = .leading
     func body(content: Content) -> some View {
         content
-            .frame(minWidth: width, idealWidth: width, maxWidth: width,
-                   minHeight: nil, idealHeight: nil, maxHeight: nil,
-                   alignment: alignment)
+            .frame(
+                minWidth: width,
+                idealWidth: width,
+                maxWidth: width,
+                minHeight: nil,
+                idealHeight: nil,
+                maxHeight: nil,
+                alignment: alignment
+            )
             .lineLimit(1)
     }
 

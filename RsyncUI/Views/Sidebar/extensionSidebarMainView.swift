@@ -85,8 +85,11 @@ extension SidebarMainView {
 
     func observerDidMountNotification() {
         let notificationCenter = NSWorkspace.shared.notificationCenter
-        notificationCenter.addObserver(forName: NSWorkspace.didMountNotification,
-                                       object: nil, queue: .main) { notification in
+        notificationCenter.addObserver(
+            forName: NSWorkspace.didMountNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
             if let volumeURL = notification.userInfo?[NSWorkspace.volumeURLUserInfoKey] as? URL {
                 Task {
                     guard await tasksAreInProgress() == false else { return }
@@ -98,8 +101,11 @@ extension SidebarMainView {
 
     func observerDidUnmountNotification() {
         let notificationCenter = NSWorkspace.shared.notificationCenter
-        notificationCenter.addObserver(forName: NSWorkspace.didUnmountNotification,
-                                       object: nil, queue: .main) { _ in
+        notificationCenter.addObserver(
+            forName: NSWorkspace.didUnmountNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
             Task {
                 guard await tasksAreInProgress() == false else { return }
                 await verifyAndLoadProfileMountedVolume(nil)
