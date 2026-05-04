@@ -18,7 +18,7 @@ struct ReadAllTasks {
         for profileIndex in 0 ..< allprofiles.count {
             let profilename = allprofiles[profileIndex]
 
-            let configurations = ReadSynchronizeConfigurationJSON()
+            let configurations = await ReadSynchronizeConfigurationJSON()
                 .readjsonfilesynchronizeconfigurations(profilename,
                                                        rsyncversion3)
 
@@ -77,7 +77,7 @@ struct ReadAllTasks {
         for profileIndex in 0 ..< allprofiles.count {
             let profilename = allprofiles[profileIndex]
 
-            let configurations = ReadSynchronizeConfigurationJSON()
+            let configurations = await ReadSynchronizeConfigurationJSON()
                 .readjsonfilesynchronizeconfigurations(profilename,
                                                        SharedReference.shared.rsyncversion3)
 

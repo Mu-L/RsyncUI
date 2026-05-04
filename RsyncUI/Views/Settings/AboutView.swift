@@ -145,7 +145,6 @@ extension AboutView {
     }
 
     func loadData() async -> String {
-        async let urlstring = await GetversionofRsyncUI().downloadlinkofrsyncui() ?? ""
-        return await urlstring
+        await GetversionofRsyncUI().downloadlinkofrsyncui() ?? ""
     }
 }

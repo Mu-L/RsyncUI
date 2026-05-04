@@ -47,6 +47,7 @@ struct LogStatsChartView: View {
     @State private var typeofchart: TypeofChart = .barchart
 
     @State private var numberofdata: String = ""
+    @State private var appliedNumberofdata: String = ""
 
     @State private var selectedDataPoint: LogEntry.ID?
 
@@ -82,6 +83,7 @@ struct LogStatsChartView: View {
                     }
 
                 EditValueErrorScheme(100, "Records", $numberofdata, setNumber(numberofdata))
+                    .onSubmit { applyChartLimit() }
             }
 
             HStack {
@@ -211,11 +213,11 @@ struct LogStatsChartView: View {
     }
 
     private var chartLimit: LogChartLimit {
-        guard numberofdata.isEmpty == false else {
+        guard appliedNumberofdata.isEmpty == false else {
             return .maxPerDay
         }
 
-        return .topNPerDay(Int(numberofdata) ?? 20)
+        return .topNPerDay(Int(appliedNumberofdata) ?? 20)
     }
 
     private var chartRefreshKey: ChartRefreshKey {
@@ -265,6 +267,13 @@ struct LogStatsChartView: View {
         if let selectedDataPoint,
            entries.contains(where: { $0.id == selectedDataPoint }) == false {
             self.selectedDataPoint = nil
+        }
+    }
+
+    private func applyChartLimit() {
+        guard numberofdata.isEmpty || verifyNumbers(numberofdata) else { return }
+        if appliedNumberofdata != numberofdata {
+            appliedNumberofdata = numberofdata
         }
     }
 }

@@ -12,9 +12,11 @@ actor SharedJSONStorageWriter {
 
     private init() {}
 
-    func write(_ value: sending some Encodable & Sendable, to fileURL: URL) throws {
+    func write(_ value: sending some Encodable & Sendable, to fileURL: URL) async throws {
         Logger.process.debugMessageOnly("SharedJSONStorageWriter: writing to \(fileURL)")
         let encodeddata = try EncodeGeneric().encode(value)
-        try encodeddata.write(to: fileURL)
+        try await Task.detached(priority: .utility) {
+            try encodeddata.write(to: fileURL)
+        }.value
     }
 }

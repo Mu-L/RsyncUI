@@ -59,25 +59,13 @@ struct ConfigurationsTableLoadDataView: View {
             .width(min: 50, max: 90)
         }
         .task(id: uuidprofile) {
-            var profile = ""
+            configurations = []
             let record = rsyncUIdata.validprofiles.filter { $0.id == uuidprofile }
             guard record.count > 0 else { return }
-            profile = record[0].profilename
-            configurations = ReadSynchronizeConfigurationJSON()
+            let profile = record[0].profilename
+            configurations = await ReadSynchronizeConfigurationJSON()
                 .readjsonfilesynchronizeconfigurations(profile,
                                                        SharedReference.shared.rsyncversion3)
-        }
-        .onChange(of: uuidprofile) {
-            Task {
-                configurations = []
-                var profile = ""
-                let record = rsyncUIdata.validprofiles.filter { $0.id == uuidprofile }
-                guard record.count > 0 else { return }
-                profile = record[0].profilename
-                configurations = ReadSynchronizeConfigurationJSON()
-                    .readjsonfilesynchronizeconfigurations(profile,
-                                                           SharedReference.shared.rsyncversion3)
-            }
         }
     }
 }
