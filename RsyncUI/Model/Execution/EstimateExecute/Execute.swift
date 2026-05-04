@@ -43,6 +43,16 @@ final class Execute {
         return nil
     }
 
+    private func releaseStreamingReferences() {
+        activeStreamingProcess = nil
+        streamingHandlers = nil
+    }
+
+    private func completeExecution() {
+        releaseStreamingReferences()
+        SharedReference.shared.updateprocess(nil)
+    }
+
     private func startexecution() {
         guard !(stackoftasks?.isEmpty ?? true) else { return }
         streamingHandlers = CreateStreamingHandlers().createHandlers(
@@ -235,7 +245,11 @@ extension Execute {
         }
 
         guard !(stackoftasks?.isEmpty ?? true) else {
-            Task {
+            Task { [self] in
+                defer {
+                    completeExecution()
+                }
+
                 let update = await Logging.create(profile: structprofile,
                                                   configurations: localconfigurations)
                 let updateconfigurations = await update.setCurrentDateOnConfiguration(configrecords: configrecords)
@@ -248,19 +262,13 @@ extension Execute {
                 do {
                     try await update.addLogToPermanentStore(scheduleRecords: schedulerecords)
                 } catch { return }
-
-                // Release streaming references when completed
-                activeStreamingProcess = nil
-                streamingHandlers = nil
-                SharedReference.shared.updateprocess(nil)
                 // If logging details to file it must be here
             }
             return
         }
         // Execute next task
         // Release references before starting next to avoid growth
-        activeStreamingProcess = nil
-        streamingHandlers = nil
+        releaseStreamingReferences()
         startexecution()
     }
 
@@ -292,7 +300,11 @@ extension Execute {
             }
 
             guard !(stackoftasks?.isEmpty ?? true) else {
-                Task {
+                Task { [self] in
+                    defer {
+                        completeExecution()
+                    }
+
                     let update = await Logging.create(profile: structprofile,
                                                       configurations: localconfigurations)
                     let updateconfigurations = await update.setCurrentDateOnConfiguration(configrecords: configrecords)
@@ -305,16 +317,12 @@ extension Execute {
                     do {
                         try await update.addLogToPermanentStore(scheduleRecords: schedulerecords)
                     } catch { return }
-                    // Release streaming references when completed
-                    activeStreamingProcess = nil
-                    streamingHandlers = nil
                 }
                 return
             }
             // Execute next task
             // Release references before starting next to avoid growth
-            activeStreamingProcess = nil
-            streamingHandlers = nil
+            releaseStreamingReferences()
             startexecution_noestimate()
         }
     }

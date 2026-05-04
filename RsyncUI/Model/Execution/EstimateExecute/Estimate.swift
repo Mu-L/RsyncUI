@@ -152,32 +152,29 @@ extension Estimate {
         // Mark if arguments --itemize-changes and --update are included within the arguments
         record.itemizechanges = itemizechanges
 
-        Task { [self, originalOutput] in
-            // Create data for output rsync for view off-main
-            let output = CreateOutputforView().createOutputForView(originalOutput)
-            record.outputfromrsync = output
-            localprogressdetails?.appendRecordEstimatedList(record)
+        let output = CreateOutputforView().createOutputForView(originalOutput)
+        record.outputfromrsync = output
+        localprogressdetails?.appendRecordEstimatedList(record)
 
-            if record.datatosynchronize {
-                if let config = getConfig(hiddenID) {
-                    localprogressdetails?.appendUUIDWithDataToSynchronize(config.id)
-                }
+        if record.datatosynchronize {
+            if let config = getConfig(hiddenID) {
+                localprogressdetails?.appendUUIDWithDataToSynchronize(config.id)
             }
+        }
 
-            if let count = stackoftasks?.count, count > 0 {
-                // Estimate next task
-                // Release references before starting next to avoid growth
-                activeStreamingProcess = nil
-                streamingHandlers = nil
-                startEstimation()
-            } else {
-                localprogressdetails?.estimationIsComplete()
-                Logger.process.debugMessageOnly("Estimate: ESTIMATION is completed")
-                // Release streaming references when completed
-                activeStreamingProcess = nil
-                streamingHandlers = nil
-                return
-            }
+        if let count = stackoftasks?.count, count > 0 {
+            // Estimate next task
+            // Release references before starting next to avoid growth
+            activeStreamingProcess = nil
+            streamingHandlers = nil
+            startEstimation()
+        } else {
+            localprogressdetails?.estimationIsComplete()
+            Logger.process.debugMessageOnly("Estimate: ESTIMATION is completed")
+            // Release streaming references when completed
+            activeStreamingProcess = nil
+            streamingHandlers = nil
+            return
         }
     }
 }

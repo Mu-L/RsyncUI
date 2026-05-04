@@ -60,20 +60,34 @@ extension SidebarMainView {
     }
 
     private func handleDefaultProfileEstimate(_ queryitems: [URLQueryItem], _ externalURL: Bool) {
-        if externalURL {
-            guard loadProfileForExternalURLLink(nil) else { return }
+        guard externalURL else {
+            if let count = rsyncUIdata.configurations?.count, count > 0 {
+                queryitem = queryitems[0]
+            }
+            return
         }
-        if let count = rsyncUIdata.configurations?.count, count > 0 {
-            queryitem = queryitems[0]
+
+        Task { @MainActor in
+            guard await loadProfileForExternalURLLink(nil) else { return }
+            if let count = rsyncUIdata.configurations?.count, count > 0 {
+                queryitem = queryitems[0]
+            }
         }
     }
 
     private func handleNamedProfileEstimate(_ profile: String, _ queryitems: [URLQueryItem], _ externalURL: Bool) {
-        if externalURL {
-            guard loadProfileForExternalURLLink(profile) else { return }
+        guard externalURL else {
+            if let count = rsyncUIdata.configurations?.count, count > 0 {
+                queryitem = queryitems[0]
+            }
+            return
         }
-        if let count = rsyncUIdata.configurations?.count, count > 0 {
-            queryitem = queryitems[0]
+
+        Task { @MainActor in
+            guard await loadProfileForExternalURLLink(profile) else { return }
+            if let count = rsyncUIdata.configurations?.count, count > 0 {
+                queryitem = queryitems[0]
+            }
         }
     }
 
@@ -146,9 +160,9 @@ extension SidebarMainView {
         return false
     }
 
-    /// Must load profile for URL-link async to make sure profile is
-    /// loaded ahead of start requested action. Only for external URL requests
-    func loadProfileForExternalURLLink(_ profile: String?) -> Bool {
+    /// Must load profile for URL-link before starting the requested action.
+    /// Only for external URL requests.
+    func loadProfileForExternalURLLink(_ profile: String?) async -> Bool {
         rsyncUIdata.externalurlrequestinprogress = true
         if profile == nil {
             rsyncUIdata.profile = nil
@@ -161,14 +175,10 @@ extension SidebarMainView {
             }
         }
 
-        rsyncUIdata.configurations = ReadSynchronizeConfigurationJSON()
+        rsyncUIdata.configurations = await ReadSynchronizeConfigurationJSON()
             .readjsonfilesynchronizeconfigurations(profile,
                                                    SharedReference.shared.rsyncversion3)
 
-        if rsyncUIdata.configurations == nil {
-            return false
-        } else {
-            return true
-        }
+        return rsyncUIdata.configurations != nil
     }
 }
