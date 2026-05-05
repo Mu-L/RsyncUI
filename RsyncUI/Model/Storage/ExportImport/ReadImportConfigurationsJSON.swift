@@ -5,39 +5,36 @@
 //  Created by Thomas Evensen on 23/07/2024.
 //
 
-import DecodeEncodeGeneric
 import Foundation
 import OSLog
 
 @MainActor
-final class ReadImportConfigurationsJSON {
-    var importconfigurations: [SynchronizeConfiguration]?
-    var maxhiddenID: Int = -1
-
-    private func importjsonfile(_ filenameimport: String) {
+enum ReadImportConfigurationsJSON {
+    static func read(_ filenameimport: String, maxhiddenId: Int) async -> [SynchronizeConfiguration]? {
         do {
-            let importeddata = try DecodeGeneric().decodeArray(DecodeSynchronizeConfiguration.self, fromFile: filenameimport)
+            let fileURL = URL(fileURLWithPath: filenameimport)
+            let importeddata = try await SharedJSONStorageReader.shared.decodeArray(
+                DecodeSynchronizeConfiguration.self,
+                from: fileURL
+            )
+            var nextHiddenID = maxhiddenId
 
-            importconfigurations = importeddata.map { importrecord in
+            let importconfigurations = importeddata.map { importrecord in
+                nextHiddenID += 1
                 var element = SynchronizeConfiguration(importrecord)
-                element.hiddenID = maxhiddenID + 1
+                element.hiddenID = nextHiddenID
                 element.dateRun = nil
                 element.backupID = "IMPORT: " + (importrecord.backupID ?? "")
                 element.id = UUID()
-                maxhiddenID += 1
                 return element
             }
             let message = "ReadImportConfigurationsJSON - \(filenameimport) read import configurations from permanent storage"
             Logger.process.debugMessageOnly(message)
+            return importconfigurations
         } catch {
             let message = "ReadImportConfigurationsJSON - \(filenameimport): ERROR reading import configurations"
             Logger.process.errorMessageOnly(message)
-            return
+            return nil
         }
-    }
-
-    init(_ filenameimport: String, maxhiddenId: Int) {
-        maxhiddenID = maxhiddenId
-        importjsonfile(filenameimport)
     }
 }

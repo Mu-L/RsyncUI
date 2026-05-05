@@ -166,7 +166,42 @@ final class Execute {
     }
 
     @discardableResult
-    init(profile: String?,
+    static func start(profile: String?,
+                      configurations: [SynchronizeConfiguration],
+                      selecteduuids: Set<UUID>,
+                      progressdetails: ProgressDetails?,
+                      fileHandler: @escaping (Int) -> Void,
+                      updateconfigurations: @escaping ([SynchronizeConfiguration]) -> Void) -> Execute {
+        let execute = Execute(profile: profile,
+                              configurations: configurations,
+                              selecteduuids: selecteduuids,
+                              progressdetails: progressdetails,
+                              fileHandler: fileHandler,
+                              updateconfigurations: updateconfigurations)
+        guard !(execute.stackoftasks?.isEmpty ?? true) else { return execute }
+        Logger.process.debugMessageOnly("Execute: START EXECUTION")
+        execute.startexecution()
+        return execute
+    }
+
+    @discardableResult
+    static func start(profile: String?,
+                      configurations: [SynchronizeConfiguration],
+                      selecteduuids: Set<UUID>,
+                      noestprogressdetails: NoEstProgressDetails?,
+                      fileHandler: @escaping (Int) -> Void,
+                      updateconfigurations: @escaping ([SynchronizeConfiguration]) -> Void) -> Execute {
+        let execute = Execute(profile: profile,
+                              configurations: configurations,
+                              selecteduuids: selecteduuids,
+                              noestprogressdetails: noestprogressdetails,
+                              fileHandler: fileHandler,
+                              updateconfigurations: updateconfigurations)
+        execute.startexecution_noestimate()
+        return execute
+    }
+
+    private init(profile: String?,
          configurations: [SynchronizeConfiguration],
          selecteduuids: Set<UUID>,
          progressdetails: ProgressDetails?,
@@ -183,9 +218,6 @@ final class Execute {
             selecteduuids.contains($0.id) && $0.task != SharedReference.shared.halted
         }
         stackoftasks = taskstosynchronize.map(\.hiddenID)
-        guard !(stackoftasks?.isEmpty ?? true) else { return }
-        Logger.process.debugMessageOnly("Execute: START EXECUTION")
-        startexecution()
     }
 
     @discardableResult
@@ -202,7 +234,6 @@ final class Execute {
         localupdateconfigurations = updateconfigurations
 
         stackoftasks = computestackoftasks(selecteduuids)
-        startexecution_noestimate()
     }
 
     deinit {

@@ -100,7 +100,24 @@ final class Estimate {
     }
 
     @discardableResult
-    init(profile: String?,
+    static func start(profile: String?,
+                      configurations: [SynchronizeConfiguration],
+                      selecteduuids: Set<UUID>,
+                      progressdetails: ProgressDetails?) -> Estimate {
+        let estimate = Estimate(profile: profile,
+                                configurations: configurations,
+                                selecteduuids: selecteduuids,
+                                progressdetails: progressdetails)
+        estimate.localprogressdetails?.setProfileAndNumberOfConfigurations(
+            estimate.structprofile,
+            estimate.stackoftasks?.count ?? 0
+        )
+        Logger.process.debugMessageOnly("Estimate: START ESTIMATION")
+        estimate.startEstimation()
+        return estimate
+    }
+
+    private init(profile: String?,
          configurations: [SynchronizeConfiguration],
          selecteduuids: Set<UUID>,
          progressdetails: ProgressDetails?) {
@@ -109,9 +126,6 @@ final class Estimate {
         localprogressdetails = progressdetails
 
         stackoftasks = computestackoftasks(selecteduuids)
-        localprogressdetails?.setProfileAndNumberOfConfigurations(structprofile, stackoftasks?.count ?? 0)
-        Logger.process.debugMessageOnly("Estimate: START ESTIMATION")
-        startEstimation()
     }
 
     deinit {

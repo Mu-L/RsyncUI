@@ -20,6 +20,7 @@ struct ExecuteEstTasksView: View {
     // Progress of synchronization
     @State private var progresscount: Double = 0
     @State private var maxcount: Double = 0
+    @State private var execute: Execute?
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -55,6 +56,7 @@ struct ExecuteEstTasksView: View {
             executeMultipleEstimatedTasks()
         }
         .onDisappear {
+            execute = nil
             progressdetails.estimatedlist = nil
             rsyncUIdata.executetasksinprogress = false
             if SharedReference.shared.process != nil {
@@ -90,6 +92,7 @@ extension ExecuteEstTasksView {
     }
 
     func abort() {
+        execute = nil
         progressdetails.hiddenIDatwork = -1
         selecteduuids.removeAll()
         InterruptProcess()
@@ -116,17 +119,18 @@ extension ExecuteEstTasksView {
         }
         if let adjustedselecteduuids {
             if let configurations = rsyncUIdata.configurations {
-                Execute(profile: rsyncUIdata.profile,
-                        configurations: configurations,
-                        selecteduuids: adjustedselecteduuids,
-                        progressdetails: progressdetails,
-                        fileHandler: fileHandler,
-                        updateconfigurations: updateConfigurations)
+                execute = Execute.start(profile: rsyncUIdata.profile,
+                                        configurations: configurations,
+                                        selecteduuids: adjustedselecteduuids,
+                                        progressdetails: progressdetails,
+                                        fileHandler: fileHandler,
+                                        updateconfigurations: updateConfigurations)
             }
         }
     }
 
     func updateConfigurations(_ configurations: [SynchronizeConfiguration]) {
+        execute = nil
         rsyncUIdata.configurations = configurations
         progressdetails.hiddenIDatwork = -1
         progressdetails.estimatedlist = nil

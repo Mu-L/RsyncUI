@@ -19,6 +19,7 @@ struct ExecuteNoEstTasksView: View {
     @State private var focusaborttask: Bool = false
 
     @State private var progress: Int = 0
+    @State private var execute: Execute?
 
     var body: some View {
         ZStack {
@@ -46,6 +47,7 @@ struct ExecuteNoEstTasksView: View {
             executeAllNoEstimationTasks()
         }
         .onDisappear {
+            execute = nil
             if SharedReference.shared.process != nil {
                 InterruptProcess()
             }
@@ -79,6 +81,7 @@ extension ExecuteNoEstTasksView {
     }
 
     func abort() {
+        execute = nil
         selecteduuids.removeAll()
         InterruptProcess()
         progressviewshowinfo = false
@@ -88,16 +91,17 @@ extension ExecuteNoEstTasksView {
     func executeAllNoEstimationTasks() {
         noestprogressdetails.startExecuteAllTasksNoEstimation()
         if let configurations = rsyncUIdata.configurations {
-            Execute(profile: rsyncUIdata.profile,
-                    configurations: configurations,
-                    selecteduuids: selecteduuids,
-                    noestprogressdetails: noestprogressdetails,
-                    fileHandler: fileHandler,
-                    updateconfigurations: updateConfigurations)
+            execute = Execute.start(profile: rsyncUIdata.profile,
+                                    configurations: configurations,
+                                    selecteduuids: selecteduuids,
+                                    noestprogressdetails: noestprogressdetails,
+                                    fileHandler: fileHandler,
+                                    updateconfigurations: updateConfigurations)
         }
     }
 
     func updateConfigurations(_ configurations: [SynchronizeConfiguration]) {
+        execute = nil
         rsyncUIdata.configurations = configurations
         progressviewshowinfo = false
         noestprogressdetails.reset()

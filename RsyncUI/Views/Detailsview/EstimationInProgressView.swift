@@ -12,6 +12,7 @@ struct EstimationInProgressView: View {
     @Binding var selecteduuids: Set<SynchronizeConfiguration.ID>
     /// Focus buttons from the menu
     @State private var focusaborttask: Bool = false
+    @State private var estimate: Estimate?
 
     let profile: String?
     let configurations: [SynchronizeConfiguration]
@@ -45,13 +46,7 @@ struct EstimationInProgressView: View {
                      value: progressdetails.numberofconfigurationsestimated,
                      total: Double(progressdetails.numberofconfigurations))
             .onAppear {
-                // Either is there some selceted tasks or if not
-                // the EstimateTasks selects all tasks to be estimated
-
-                Estimate(profile: profile,
-                         configurations: configurations,
-                         selecteduuids: selecteduuids,
-                         progressdetails: progressdetails)
+                startEstimate()
             }
             .progressViewStyle(.circular)
     }
@@ -59,12 +54,7 @@ struct EstimationInProgressView: View {
     var progressviewonetaskonly: some View {
         ProgressView()
             .onAppear {
-                // Either is there some selceted tasks or if not
-                // the EstimateTasks selects all tasks to be estimated
-                Estimate(profile: profile,
-                         configurations: configurations,
-                         selecteduuids: selecteduuids,
-                         progressdetails: progressdetails)
+                startEstimate()
             }
     }
 
@@ -84,7 +74,17 @@ struct EstimationInProgressView: View {
     }
 
     func abort() {
+        estimate = nil
         InterruptProcess()
         progressdetails.resetCounts()
+    }
+
+    func startEstimate() {
+        // Either is there some selceted tasks or if not
+        // the EstimateTasks selects all tasks to be estimated
+        estimate = Estimate.start(profile: profile,
+                                  configurations: configurations,
+                                  selecteduuids: selecteduuids,
+                                  progressdetails: progressdetails)
     }
 }

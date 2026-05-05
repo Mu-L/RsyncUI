@@ -5,23 +5,24 @@
 //  Created by Thomas Evensen on 19/04/2021.
 //
 
-import DecodeEncodeGeneric
 import Foundation
 import OSLog
 
 @MainActor
 struct ReadSchedule {
-    func readjsonfilecalendar(_ validprofiles: [String]) -> [SchedulesConfigurations]? {
-        var filename = ""
+    func readjsonfilecalendar(_ validprofiles: [String]) async -> [SchedulesConfigurations]? {
         let path = Homepath()
-        Logger.process.debugThreadOnly("ActorReadSchedule: readjsonfilecalendar()")
-        if let fullpathmacserial = path.fullpathmacserial {
-            filename = fullpathmacserial.appending("/") + SharedConstants().caldenarfilejson
-        }
+        Logger.process.debugThreadOnly("ReadSchedule: readjsonfilecalendar()")
+        guard let fullpathmacserial = path.fullpathmacserial else { return nil }
+
+        let fileURL = URL(fileURLWithPath: fullpathmacserial)
+            .appendingPathComponent(SharedConstants().caldenarfilejson)
 
         do {
-            let data = try DecodeGeneric().decodeArray(DecodeSchedules.self,
-                                                       fromFile: filename)
+            let data = try await SharedJSONStorageReader.shared.decodeArray(
+                DecodeSchedules.self,
+                from: fileURL
+            )
 
             return data.compactMap { element in
                 let item = SchedulesConfigurations(element)
@@ -37,8 +38,8 @@ struct ReadSchedule {
                 }
             }
         } catch {
-            let message = "ActorReadSchedule - read Calendar from permanent storage " +
-                "\(filename) failed with error: some ERROR reading"
+            let message = "ReadSchedule - read Calendar from permanent storage " +
+                "\(fileURL.path) failed with error: some ERROR reading"
             Logger.process.debugMessageOnly(message)
         }
         return nil

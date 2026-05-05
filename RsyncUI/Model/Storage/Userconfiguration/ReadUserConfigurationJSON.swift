@@ -5,7 +5,6 @@
 //  Created by Thomas Evensen on 12/02/2022.
 //
 
-import DecodeEncodeGeneric
 import Foundation
 import OSLog
 
@@ -13,14 +12,17 @@ import OSLog
 struct ReadUserConfigurationJSON {
     let path = Homepath()
 
-    func readuserconfiguration() {
-        var userconfigurationfile = ""
-        if let fullpathmacserial = path.fullpathmacserial {
-            userconfigurationfile = fullpathmacserial.appending("/") + SharedReference.shared.userconfigjson
-        }
+    func readuserconfiguration() async {
+        guard let fullpathmacserial = path.fullpathmacserial else { return }
+
+        let userconfigurationfileURL = URL(fileURLWithPath: fullpathmacserial)
+            .appendingPathComponent(SharedReference.shared.userconfigjson)
+
         do {
-            let importeddata = try DecodeGeneric().decode(DecodeUserConfiguration.self,
-                                                          fromFile: userconfigurationfile)
+            let importeddata = try await SharedJSONStorageReader.shared.decode(
+                DecodeUserConfiguration.self,
+                from: userconfigurationfileURL
+            )
 
             UserConfiguration(importeddata)
             Logger.process.debugThreadOnly("ReadUserConfigurationJSON: Reading user configurations")

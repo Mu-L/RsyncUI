@@ -39,7 +39,7 @@ struct RsyncUIView: View {
         .padding()
         .task {
             SharedReference.shared.errorobject = errorhandling
-            ReadUserConfigurationJSON().readuserconfiguration()
+            await ReadUserConfigurationJSON().readuserconfiguration()
             // Get version of rsync
             rsyncversion.getRsyncVersion()
             rsyncUIdata.executetasksinprogress = false
