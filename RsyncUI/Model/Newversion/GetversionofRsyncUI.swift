@@ -5,13 +5,18 @@
 //  Created by Thomas Evensen on 02/07/2025.
 //
 
-import DecodeEncodeGeneric
 import OSLog
 
 struct GetversionofRsyncUI {
     private func fetchMatchingVersions() async throws -> [VersionsofRsyncUI] {
-        let all = try await DecodeGeneric().decodeArray(VersionsofRsyncUI.self,
-                                                        fromURL: Resources().getResource(resource: .urlJSON))
+        guard let resourceURL = URL(string: Resources().getResource(resource: .urlJSON)) else {
+            throw URLError(.badURL)
+        }
+
+        let all = try await SharedJSONStorageReader.shared.decodeArray(
+            VersionsofRsyncUI.self,
+            fromRemoteURL: resourceURL
+        )
         Logger.process.debugThreadOnly("CheckfornewversionofRsyncUI: \(all)")
         let runningversion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         return all.filter { runningversion.isEmpty ? true : $0.version == runningversion }

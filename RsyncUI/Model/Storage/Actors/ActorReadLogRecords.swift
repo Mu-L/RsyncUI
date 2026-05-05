@@ -5,7 +5,6 @@
 //  Created by Thomas Evensen on 04/12/2024.
 //
 
-import DecodeEncodeGeneric
 import Foundation
 import OSLog
 
@@ -13,20 +12,25 @@ actor ActorReadLogRecords {
     func readjsonfilelogrecords(_ profile: String?,
                                 _ validhiddenIDs: Set<Int>) async -> [LogRecords]? {
         let path = await Homepath()
-        var filename = ""
         Logger.process.debugThreadOnly("ActorReadLogRecordsJSON: readjsonfilelogrecords()")
-        if let profile, let fullpathmacserial = path.fullpathmacserial {
-            filename = fullpathmacserial.appending("/") + profile.appending("/") + SharedConstants().filenamelogrecordsjson
+
+        guard let fullpathmacserial = path.fullpathmacserial else { return nil }
+
+        let baseURL = URL(fileURLWithPath: fullpathmacserial)
+        let fileURL: URL = if let profile {
+            baseURL.appendingPathComponent(profile)
+                .appendingPathComponent(SharedConstants().filenamelogrecordsjson)
         } else {
-            if let fullpathmacserial = path.fullpathmacserial {
-                filename = fullpathmacserial.appending("/") + SharedConstants().filenamelogrecordsjson
-            }
+            baseURL.appendingPathComponent(SharedConstants().filenamelogrecordsjson)
         }
 
-        Logger.process.debugMessageOnly("ActorReadLogRecordsJSON: readjsonfilelogrecords() from \(filename)")
+        Logger.process.debugMessageOnly("ActorReadLogRecordsJSON: readjsonfilelogrecords() from \(fileURL.path)")
 
         do {
-            let data = try DecodeGeneric().decodeArray(DecodeLogRecords.self, fromFile: filename)
+            let data = try await SharedJSONStorageReader.shared.decodeArray(
+                DecodeLogRecords.self,
+                from: fileURL
+            )
             Logger.process.debugThreadOnly("ActorReadLogRecordsJSON - \(profile ?? "default")")
             return data.compactMap { element in
                 let item = LogRecords(element)
