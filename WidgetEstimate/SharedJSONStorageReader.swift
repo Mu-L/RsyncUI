@@ -23,7 +23,7 @@ actor SharedJSONStorageReader {
         }.value
     }
 
-    func decodeArray<T: Decodable & Sendable>(_ type: T.Type, from fileURL: URL) async throws -> [T] {
+    func decodeArray<T: Decodable & Sendable>(_: T.Type, from fileURL: URL) async throws -> [T] {
         try await decode([T].self, from: fileURL)
     }
 }

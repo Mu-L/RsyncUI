@@ -118,9 +118,9 @@ final class Estimate {
     }
 
     private init(profile: String?,
-         configurations: [SynchronizeConfiguration],
-         selecteduuids: Set<UUID>,
-         progressdetails: ProgressDetails?) {
+                 configurations: [SynchronizeConfiguration],
+                 selecteduuids: Set<UUID>,
+                 progressdetails: ProgressDetails?) {
         structprofile = profile
         localconfigurations = configurations
         localprogressdetails = progressdetails

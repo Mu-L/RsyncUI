@@ -117,23 +117,23 @@ struct ImportView: View {
                     }
                     .fileImporter(isPresented: $showimportdialog,
                                   allowedContentTypes: [uutype],
-                                   onCompletion: { result in
-                                       switch result {
-                                       case let .success(url):
-                                           filenameimport = url.relativePath
-                                           guard filenameimport.isEmpty == false else { return }
-                                           Task { @MainActor in
-                                               if let importconfigurations = await ReadImportConfigurationsJSON.read(
-                                                   filenameimport,
-                                                   maxhiddenId: maxhiddenID
-                                               ) {
-                                                   configurations = importconfigurations
-                                               }
-                                           }
-                                       case let .failure(error):
-                                           SharedReference.shared.errorobject?.alert(error: error)
-                                       }
-                                   })
+                                  onCompletion: { result in
+                                      switch result {
+                                      case let .success(url):
+                                          filenameimport = url.relativePath
+                                          guard filenameimport.isEmpty == false else { return }
+                                          Task { @MainActor in
+                                              if let importconfigurations = await ReadImportConfigurationsJSON.read(
+                                                  filenameimport,
+                                                  maxhiddenId: maxhiddenID
+                                              ) {
+                                                  configurations = importconfigurations
+                                              }
+                                          }
+                                      case let .failure(error):
+                                          SharedReference.shared.errorobject?.alert(error: error)
+                                      }
+                                  })
 
                     // Because of the role .destructive keep the if #available(macOS 26.0, *)
                     if #available(macOS 26.0, *) {

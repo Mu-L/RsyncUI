@@ -202,11 +202,11 @@ final class Execute {
     }
 
     private init(profile: String?,
-         configurations: [SynchronizeConfiguration],
-         selecteduuids: Set<UUID>,
-         progressdetails: ProgressDetails?,
-         fileHandler: @escaping (Int) -> Void,
-         updateconfigurations: @escaping ([SynchronizeConfiguration]) -> Void) {
+                 configurations: [SynchronizeConfiguration],
+                 selecteduuids: Set<UUID>,
+                 progressdetails: ProgressDetails?,
+                 fileHandler: @escaping (Int) -> Void,
+                 updateconfigurations: @escaping ([SynchronizeConfiguration]) -> Void) {
         structprofile = profile
         localconfigurations = configurations
         localprogressdetails = progressdetails

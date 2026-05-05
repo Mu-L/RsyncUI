@@ -54,7 +54,7 @@ struct SharedJSONStorageTests {
     }
 }
 
-private struct SampleRecord: Codable, Equatable, Sendable {
+private struct SampleRecord: Codable, Equatable {
     let id: Int
     let name: String
 }
