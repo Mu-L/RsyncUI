@@ -12,7 +12,7 @@ import OSLog
 struct ReadSchedule {
     func readjsonfilecalendar(_ validprofiles: [String]) async -> [SchedulesConfigurations]? {
         let path = Homepath()
-        Logger.process.debugThreadOnly("ActorReadSchedule: readjsonfilecalendar()")
+        Logger.process.debugThreadOnly("ReadSchedule: readjsonfilecalendar()")
         guard let fullpathmacserial = path.fullpathmacserial else { return nil }
 
         let fileURL = URL(fileURLWithPath: fullpathmacserial)
@@ -38,7 +38,7 @@ struct ReadSchedule {
                 }
             }
         } catch {
-            let message = "ActorReadSchedule - read Calendar from permanent storage " +
+            let message = "ReadSchedule - read Calendar from permanent storage " +
                 "\(fileURL.path) failed with error: some ERROR reading"
             Logger.process.debugMessageOnly(message)
         }

@@ -12,7 +12,7 @@ actor ActorReadLogRecords {
     func readjsonfilelogrecords(_ profile: String?,
                                 _ validhiddenIDs: Set<Int>) async -> [LogRecords]? {
         let path = await Homepath()
-        Logger.process.debugThreadOnly("ActorReadLogRecordsJSON: readjsonfilelogrecords()")
+        Logger.process.debugThreadOnly("ActorReadLogRecords: readjsonfilelogrecords()")
 
         guard let fullpathmacserial = path.fullpathmacserial else { return nil }
 
@@ -24,14 +24,14 @@ actor ActorReadLogRecords {
             baseURL.appendingPathComponent(SharedConstants().filenamelogrecordsjson)
         }
 
-        Logger.process.debugMessageOnly("ActorReadLogRecordsJSON: readjsonfilelogrecords() from \(fileURL.path)")
+        Logger.process.debugMessageOnly("ActorReadLogRecords: readjsonfilelogrecords() from \(fileURL.path)")
 
         do {
             let data = try await SharedJSONStorageReader.shared.decodeArray(
                 DecodeLogRecords.self,
                 from: fileURL
             )
-            Logger.process.debugThreadOnly("ActorReadLogRecordsJSON - \(profile ?? "default")")
+            Logger.process.debugThreadOnly("ActorReadLogRecords - \(profile ?? "default")")
             return data.compactMap { element in
                 let item = LogRecords(element)
                 return validhiddenIDs.contains(item.hiddenID) ? item : nil
@@ -39,7 +39,7 @@ actor ActorReadLogRecords {
         } catch {
             let profileName = profile ?? "default profile"
             Logger.process.errorMessageOnly(
-                "ActorReadLogRecordsJSON - \(profileName): some ERROR reading logrecords from permanent storage"
+                "ActorReadLogRecords - \(profileName): some ERROR reading logrecords from permanent storage"
             )
         }
         return nil

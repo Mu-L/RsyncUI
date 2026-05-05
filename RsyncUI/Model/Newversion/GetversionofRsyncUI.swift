@@ -17,7 +17,7 @@ struct GetversionofRsyncUI {
             VersionsofRsyncUI.self,
             fromRemoteURL: resourceURL
         )
-        Logger.process.debugThreadOnly("CheckfornewversionofRsyncUI: \(all)")
+        Logger.process.debugThreadOnly("GetversionofRsyncUI: \(all)")
         let runningversion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         return all.filter { runningversion.isEmpty ? true : $0.version == runningversion }
     }
@@ -26,7 +26,7 @@ struct GetversionofRsyncUI {
         do {
             return try await fetchMatchingVersions().isEmpty == false
         } catch {
-            Logger.process.warning("CheckfornewversionofRsyncUI: loading data failed)")
+            Logger.process.warning("GetversionofRsyncUI: loading data failed)")
             return false
         }
     }
@@ -35,7 +35,7 @@ struct GetversionofRsyncUI {
         do {
             return try await fetchMatchingVersions().first?.url
         } catch {
-            Logger.process.warning("CheckfornewversionofRsyncUI: loading data failed)")
+            Logger.process.warning("GetversionofRsyncUI: loading data failed)")
             return nil
         }
     }
