@@ -1,0 +1,710 @@
+# Detailed developer report: changes after `v2.9.3` to latest commit
+
+## Scope
+
+- **Range analyzed:** `v2.9.3` -> `6cfe48f1cccc108d2432b8ac193c045812d294ac`
+- **Branch:** `version-2.9.5`
+- **Commit count:** 52 commits total, including 6 merge commits
+- **Net diff:** 86 files changed, 2466 insertions, 2548 deletions
+
+This report is based on the git history and diffs in the range above. For the **why**, I used:
+
+1. explicit commit messages when they were descriptive,
+2. the cleanup design notes added in this range (`cleanup.md`, `phase1.md`, `phase3.md`, `phase4.md`),
+3. the actual code changes where commit messages were generic (`Update` / `Updates`).
+
+Where the motivation was not stated directly in a commit message, the reason is marked as an **inference from the diff**.
+
+---
+
+## Executive summary
+
+The codebase changes after `v2.9.3` are dominated by a **cleanup/refactor wave** rather than a large end-user feature release. The main technical themes are:
+
+1. **Storage/persistence consolidation** so JSON writes go through one shared async boundary instead of repeated local encode/write logic.
+2. **Log-domain unification** so loading, filtering, deleting, and chart preparation are owned by services instead of being spread across actors, observables, and views.
+3. **Concurrency reduction** by removing thin actors and replacing accidental async wrappers with plain helpers where isolation was not buying anything.
+4. **Execution-path cleanup** in `Estimate` / `Execute` so completion, logging, and resource release are more explicit.
+5. **View-layer simplification** by moving log/data logic out of SwiftUI views and deleting some dead or low-value UI surface.
+6. **Release/build metadata cleanup** so versioning is less likely to drift between Xcode settings and packaging scripts.
+
+The overall direction is clear: **make the architecture easier to reason about, reduce duplicated persistence/logging logic, and narrow concurrency to the places where it is actually needed**.
+
+---
+
+## 1. Release, versioning, and packaging changes
+
+### What changed
+
+- The Xcode project version moved from:
+  - **marketing version:** `2.9.3` -> `2.9.5`
+  - **build number:** `183` -> `190`
+- `Makefile` and `Makefile-arm64` stopped hardcoding `VERSION = 2.9.3` and now derive the version from `RsyncUI.xcodeproj/project.pbxproj`.
+- `versionRsyncUI/versionRsyncUI.json` was rewritten to point older 2.9.x installations at the `v2.9.3` download URL, and older 2.8.x entries were removed.
+- `README.md` was updated multiple times for release metadata, badge URLs, wording, and links.
+
+### Why it changed
+
+- **Explicit from diff/commit message:** the branch moved through `2.9.4` and then `2.9.5`, so project metadata had to be bumped.
+- **Likely reason for the Makefile change:** packaging should not depend on a manually duplicated version string. Reading `MARKETING_VERSION` directly from the Xcode project reduces release mistakes where the app bundle and packaged artifact names drift apart.
+- **Likely reason for the version JSON rewrite:** the in-app “download latest” logic only needs currently relevant upgrade targets, and keeping URLs aligned with the actual current release simplifies version lookup behavior.
+
+### Developer impact
+
+- Release automation is less fragile.
+- Version lookup/download behavior is cleaner.
+- The app and the packaging scripts now share a single version source of truth.
+
+---
+
+## 2. Swift package dependency updates
+
+### What changed
+
+`Package.resolved` advanced at least these package revisions:
+
+- `ProcessCommand`
+- `RsyncAnalyse`
+- `RsyncProcessStreaming`
+
+The range also contains a dedicated commit named **`Updated RsyncAnalyse`**.
+
+### Why it changed
+
+- **Explicit for `RsyncAnalyse`:** the dependency was intentionally refreshed.
+- **Inference from the diff:** the package updates support the refactor work in execution/output/logging and keep the app aligned with the current `rsyncOSX` package ecosystem.
+
+### Developer impact
+
+- The app is pinned to newer versions of its process-streaming and analysis stack.
+- Some cleanup in execution/output code likely depends on these updated package behaviors or interfaces.
+
+---
+
+## 3. Persistence layer refactor: shared JSON write boundary
+
+### What changed
+
+The biggest structural change in the storage layer is the addition of:
+
+- `RsyncUI/Model/Storage/SharedJSONStorageWriter.swift`
+
+That new actor now owns the generic “encode value and write it to disk” path.
+
+Several write helpers were rewritten to use it:
+
+- `WriteSynchronizeConfigurationJSON`
+- `WriteLogRecordsJSON`
+- `WriteUserConfigurationJSON`
+- `WriteSchedule`
+- `WriteExportConfigurationsJSON`
+- `WriteWidgetsURLStringsJSON`
+
+Related read helpers were also simplified:
+
+- `ReadSynchronizeConfigurationJSON`
+- `ReadSchedule`
+- `ReadUserConfigurationJSON`
+- `ReadImportConfigurationsJSON`
+
+### What specifically changed in behavior/shape
+
+- Old write helpers used a mix of:
+  - synchronous main-actor file writes,
+  - local `EncodeGeneric` usage,
+  - constructors with side effects,
+  - detached task writes.
+- New write helpers are moving toward one consistent pattern:
+  - explicit `static func write(...) async`,
+  - URL/path construction at the call site or helper,
+  - `await SharedJSONStorageWriter.shared.write(...)`,
+  - explicit error propagation/logging.
+
+`WriteUserConfigurationJSON` and `WriteWidgetsURLStringsJSON` were also changed from writing app-owned model objects directly to writing small dedicated storage snapshots (`StoredUserConfiguration`, `StoredWidgetURLStrings`).
+
+### Why it changed
+
+This motivation is stated very clearly in the cleanup docs added in this range:
+
+- the storage layer repeated the same responsibilities in many files,
+- detached persistence made ordering/error propagation harder to reason about,
+- too much file I/O logic was living in `@MainActor` helpers,
+- writers were using constructor side effects instead of explicit APIs.
+
+In short, the refactor was done to:
+
+1. **centralize write behavior,**
+2. **remove duplicated encode/write code,**
+3. **make persistence explicit and awaitable,**
+4. **improve error surfacing,**
+5. **reduce “magic” work happening inside initializers.**
+
+### Developer impact
+
+- Disk writes are now easier to trace.
+- Call sites are more explicit.
+- Persistence ordering is easier to reason about than with fire-and-forget detached writes.
+- This lays groundwork for future read-side consolidation too.
+
+---
+
+## 4. Logging and log-store refactor
+
+This is the most important functional refactor in the range.
+
+### New log-domain services
+
+Two new files were added:
+
+- `RsyncUI/Model/Loggdata/LogStoreService.swift`
+- `RsyncUI/Model/Loggdata/LogChartService.swift`
+
+These now own most of the repeated log-domain operations that previously lived in a mix of actors, observables, and views.
+
+### What moved into services
+
+`LogStoreService` now centralizes:
+
+- loading persisted log records,
+- resolving selected task -> `hiddenID`,
+- merging logs for one task or all tasks,
+- sorting logs,
+- text/date filtering,
+- delete-and-persist orchestration.
+
+`LogChartService` / `LogChartReducer` now centralize:
+
+- parsing log strings into chartable entries,
+- selecting max-per-day records,
+- selecting top-N-per-day records,
+- switching between “files” and “transferred MB” metrics.
+
+### What was removed
+
+The following older abstractions were deleted:
+
+- `ObservableChartData.swift`
+- `ActorLogChartsData.swift`
+- `ActorReadLogRecordsJSON.swift`
+- `ReadLogRecordsJSON.swift`
+
+`ActorReadLogRecordsJSON` was replaced by a narrower actor:
+
+- `ActorReadLogRecords.swift`
+
+The replacement actor is much smaller in scope and now focuses on **reading JSON log records**, not UI-facing filtering/chart logic.
+
+### Changes to `Logging.swift`
+
+`Logging` was refactored to fit the new service boundary:
+
+- added async factory `Logging.create(profile:configurations:)`,
+- loads persisted logs through `LogStoreService.loadStore(...)`,
+- `addLogToPermanentStore(...)` became async,
+- failed inserts are tracked and can throw `LogError.insertionFailed(ids:)`,
+- snapshot log formatting is handled explicitly in `formatLogResult(...)`,
+- configuration date updates now explicitly persist via `WriteSynchronizeConfigurationJSON.write(...)`.
+
+### Why it changed
+
+The cleanup docs describe the problem directly: log loading, filtering, delete logic, chart preparation, and selection-to-hiddenID mapping were duplicated across:
+
+- `Logging`
+- `LogRecordsTabView`
+- `SnapshotsView`
+- `ObservableChartData`
+- `LogStatsChartView`
+- actor helpers
+
+The change was made to:
+
+1. **reduce actor count,**
+2. **stop putting domain logic in SwiftUI views,**
+3. **create one reusable log-data boundary,**
+4. **make chart logic testable without the UI,**
+5. **reduce drift between log table, chart, and snapshot flows.**
+
+### Developer impact
+
+- The log domain is much more service-oriented.
+- Views now depend on service APIs instead of actor internals.
+- The chart path is easier to extend and test.
+- The remaining duplication in log-result parsing is smaller and more visible.
+
+---
+
+## 5. Test coverage added for the refactor
+
+### What changed
+
+Two new tests were added:
+
+- `RsyncUITests/LogChartReducerTests.swift`
+- `RsyncUITests/LogStoreServiceTests.swift`
+
+`RsyncUITests/TestTags.swift` also changed:
+
+- removed `edgeCase`
+- added `logs`
+
+### Why it changed
+
+The refactor moved a significant amount of behavior out of views and actors into service/reducer code. Once logic is extracted into pure or mostly pure helpers, the natural next step is adding targeted tests.
+
+These tests appear to be there to protect:
+
+- chart reduction behavior,
+- log store load/filter/delete semantics.
+
+### Developer impact
+
+- The new architecture has at least some regression safety.
+- The log-domain cleanup is no longer purely structural; it is now backed by dedicated tests.
+
+---
+
+## 6. Concurrency cleanup and thin-actor removal
+
+Another major theme is reducing concurrency machinery that was not providing clear value.
+
+### Thin actors removed
+
+These actor-style helpers were replaced by plain structs:
+
+- `ActorCreateOutputforView.swift` -> `CreateOutputforView.swift`
+- `ActorGetversionofRsyncUI.swift` -> `GetversionofRsyncUI.swift`
+
+### What changed in practice
+
+`CreateOutputforView` now:
+
+- keeps pure line-to-view-model mapping synchronous,
+- remains async only where it still crosses storage or trimming boundaries,
+- is called directly from views/models without the extra actor wrapper for simple mapping.
+
+`GetversionofRsyncUI` now:
+
+- fetches version metadata directly,
+- exposes `getversionsofrsyncui()` and `downloadlinkofrsyncui()` without actor indirection.
+
+### Why it changed
+
+This reason is explicit in `cleanup.md` and `phase3.md`:
+
+- these actors were considered “thin” wrappers,
+- they mostly wrapped simple mapping or fetch/filter work,
+- they increased async ceremony without creating a meaningful isolation boundary.
+
+So the goal was to keep concurrency only where it is correctness-critical, such as:
+
+- rsync streaming callbacks,
+- serialized logfile access,
+- persisted log JSON reads,
+- UI debounce/cancellation flows.
+
+### Developer impact
+
+- Fewer unnecessary `await`s.
+- Less actor churn.
+- Easier reasoning about what is actually concurrent in the app.
+- Call sites in estimate/restore/quick task/about flows are simpler.
+
+---
+
+## 7. Execution and estimation pipeline cleanup
+
+### `Execute.swift`
+
+This file got a meaningful cleanup even though its overall responsibilities still remain broad.
+
+#### What changed
+
+- Added a shared `logFileActor` instead of creating `ActorLogToFile()` for each write.
+- Added:
+  - `releaseStreamingReferences()`
+  - `completeExecution()`
+- Completion paths now use `Logging.create(...)` and async log/config persistence.
+- Repeated end-of-run cleanup code was collapsed into helper methods.
+- Final completion now explicitly clears `SharedReference.shared.process`.
+
+#### Why it changed
+
+- **Explicit from commit message:** reuse a single log-file actor rather than recreating it for each write.
+- **Inference from diff:** the execution code had repeated cleanup and completion logic; extracting helpers makes the termination path less error-prone and easier to maintain.
+- **Inference from the new async logging path:** end-of-execution persistence is now structured instead of relying on older synchronous-style helpers.
+
+### `Estimate.swift`
+
+#### What changed
+
+- Removed the `validateTagging(...)` path.
+- Removed the old error type `ErrorDatatoSynchronize`.
+- Replaced async actor-based output mapping with direct synchronous `CreateOutputforView().createOutputForView(...)`.
+- Kept the sequencing logic but reduced one layer of `Task`/actor indirection.
+
+#### Why it changed
+
+- The output mapping was pure work and did not need an actor.
+- The cleanup docs explicitly call out this kind of “adapter task” as accidental complexity.
+- The removed tagging-validation path suggests the previous heuristic was either noisy, redundant, or no longer aligned with the estimate flow after other cleanup changes. The diff shows it was removed, not replaced.
+
+### Developer impact
+
+- Execution completion behavior is more explicit.
+- Estimate/output handling is simpler.
+- The pipeline still uses async where process callbacks require it, but less work is hidden behind ad hoc tasks.
+
+---
+
+## 8. Profile and configuration loading cleanup
+
+### What changed
+
+Several call sites stopped using `ActorReadSynchronizeConfigurationJSON()` directly and now go through:
+
+- `ReadSynchronizeConfigurationJSON`
+
+Affected areas include:
+
+- `RsyncUIView`
+- `ReadAllTasks`
+- `ConfigurationsTableLoadDataView`
+- sidebar deeplink/mounted-volume related profile loading
+
+`ConfigurationsTableLoadDataView` also removed a duplicated `.onChange` reload path and kept one `.task(id: uuidprofile)`-based load path.
+
+### Why it changed
+
+This is directly aligned with the cleanup notes in `cleanup.md` and `phase1.md`, which identify profile/configuration loading as duplicated across:
+
+- startup,
+- sidebar/profile switching,
+- cross-profile scans,
+- configuration table loading.
+
+The change reduces the number of entry-point variations and pushes the code toward one consistent reader boundary.
+
+### Developer impact
+
+- Less duplicated “load profile -> read configurations” logic.
+- Lower risk that startup and profile-switch behavior drift apart.
+- Cleaner task lifecycle in the configuration-loading view.
+
+---
+
+## 9. SwiftUI view changes driven by the refactor
+
+Most of the UI changes are not new end-user features. They are **architecture-driven view simplifications**.
+
+### `LogRecordsTabView`
+
+#### What changed
+
+- Removed local `hiddenID` state.
+- Removed local `validhiddenIDs` computation.
+- Replaced direct actor usage with:
+  - `LogStoreService.loadStore(...)`
+  - `LogStoreService.visibleLogs(...)`
+  - `LogStoreService.deleteLogs(...)`
+- Selection updates are now synchronous from already loaded state instead of launching extra tasks just to filter logs.
+
+#### Why it changed
+
+The view had too much domain logic. This change makes the view responsible for:
+
+- view state,
+- search text,
+- confirmation UI,
+- selection state,
+
+while the log-domain service owns the actual log selection/filter/delete logic.
+
+### `LogStatsChartView`
+
+#### What changed
+
+- Removed `ObservableChartData`.
+- Replaced optional chart data state with concrete `[LogEntry]`.
+- Replaced the old “Apply selection” toggle with a submit-based “Records” limit field.
+- Added `chartMetric`, `chartLimit`, and `chartRefreshKey`.
+- Reloads chart data through `LogStoreService.chartEntries(...)`.
+- Clears selected chart point if it no longer exists after refresh.
+- Uses shared configuration helpers such as `backupID(for:)`.
+
+#### Why it changed
+
+- The old chart path depended on a view-owned observable plus a chart-specific actor.
+- The new path reduces that to service + reducer + simple view state.
+- This keeps the view presentation-focused and makes chart refresh semantics explicit.
+
+### `SnapshotsView`
+
+#### What changed
+
+- Removed local `validhiddenIDs` duplication.
+- Added `loadSnapshotData(for:)` and loads logs via `LogStoreService.loadStore(...)`.
+- Log deletion now goes through `LogStoreService.deleteLogs(...)`.
+- Removed the unused `updated` flag and an unnecessary delayed task after updating snapshot settings.
+
+#### Why it changed
+
+- Snapshot flows were reusing the same persisted log store but were doing their own reading/deleting orchestration.
+- The refactor moves them onto the same service boundary as the inspector log view.
+
+### `QuicktaskView` / `extensionQuickTaskView`
+
+#### What changed
+
+- Removed unused `selectedAttachedVolume` state.
+- Process termination now uses `@MainActor` direct handling plus `CreateOutputforView`.
+
+#### Why it changed
+
+- Dead state was removed.
+- Pure output mapping no longer needs actor-based bridging.
+
+### `AboutView`
+
+#### What changed
+
+- Version/download lookup now uses `GetversionofRsyncUI()` directly.
+
+#### Why it changed
+
+- Follows the thin-actor removal described earlier.
+
+---
+
+## 10. Feature removals and dead-code cleanup
+
+### Global change / bulk replace UI removed
+
+These files were deleted:
+
+- `ObservableGlobalchangeConfigurations.swift`
+- `ConfigurationsTableGlobalChanges.swift`
+- `GlobalChangeFormView.swift`
+- `GlobalChangeTaskView.swift`
+
+### What this means
+
+The bulk/global change workflow for task editing was removed from the codebase in this range. There is no replacement implementation in the same range.
+
+### Why it changed
+
+- **Inference from surrounding cleanup work:** this looks like deliberate scope reduction to simplify state, views, and maintenance burden.
+- The deleted UI itself already contained special-case limitations (“Snapshot tasks cannot be updated this way”), which suggests the feature had awkward fit with the rest of the task model.
+
+### Other dead-code cleanup
+
+Deleted or reduced:
+
+- `AttachedVolumesService.swift`
+- `HelpButtonStyle` in `ButtonStyles.swift`
+- unused quick-task selection state
+- a number of decode helper temporary variables
+- several style-only formatting inconsistencies
+
+### Developer impact
+
+- Smaller UI/state surface.
+- Fewer maintenance-only types.
+- Less code that looks active but is no longer part of a coherent flow.
+
+---
+
+## 11. Settings persistence API cleanup
+
+### What changed
+
+The settings views (`Environmentsettings`, `Logsettings`, `RsyncandPathsettings`, `Sshsettings`) were updated so they no longer instantiate `WriteUserConfigurationJSON(...)` for side effects.
+
+They now do:
+
+```swift
+let snapshot = UserConfiguration()
+Task { @MainActor in
+    await WriteUserConfigurationJSON.write(snapshot)
+}
+```
+
+### Why it changed
+
+This follows the same storage API cleanup described earlier:
+
+- constructors should not do hidden persistence work,
+- persistence should be explicit and awaitable,
+- all settings screens should use the same save shape.
+
+### Developer impact
+
+- Settings saves are clearer at the call site.
+- This matches the newer explicit persistence model used elsewhere.
+
+---
+
+## 12. Documentation and repository-maintenance changes
+
+These are not runtime code changes, but they matter for developers working on the branch.
+
+### Added
+
+- `.github/copilot-instructions.md`
+- `CLAUDE.md`
+- `cleanup.md`
+- `phase1.md`
+- `phase3.md`
+- `phase4.md`
+
+### Removed
+
+- `CHANGELOG.md`
+- `report.md`
+
+### Why it changed
+
+The repo moved from an older static changelog/report style toward:
+
+- AI-assistant instructions,
+- architecture notes,
+- explicit cleanup planning,
+- phased refactor documentation.
+
+This documentation is important because it explains the intent behind the code cleanup and provides the clearest statement of the architectural direction in this range.
+
+---
+
+## 13. Overall architectural direction implied by the range
+
+After reviewing the whole diff, the direction is consistent:
+
+### Before this range
+
+- more actors than necessary,
+- repeated storage helpers,
+- repeated log-domain logic in views,
+- constructor side effects for persistence,
+- several ad hoc `Task` wrappers around simple work.
+
+### After this range
+
+- fewer actors and narrower actor scope,
+- one shared JSON writer,
+- log-domain services for store and chart behavior,
+- more explicit async persistence,
+- views with less domain logic,
+- better alignment between profile loading paths,
+- targeted tests for the refactor.
+
+### Bottom line
+
+This is primarily a **maintainability and architecture hardening release series**, not a feature-heavy one. The code is being pushed toward:
+
+- **service-owned domain logic,**
+- **explicit persistence boundaries,**
+- **fewer accidental concurrency abstractions,**
+- **less duplication between UI entry points.**
+
+---
+
+## Appendix A: chronological commit list with primary interpretation
+
+Below is the full commit range in order. For ambiguous commit messages, the “primary interpretation” is taken from the touched files.
+
+| Date | Commit | Subject | Primary interpretation |
+|---|---|---|---|
+| 2026-03-20 | `467afd7d` | Release v2.9.3: update README and download URLs | Release metadata/docs after 2.9.3 |
+| 2026-03-21 | `9a138e8b` | Update Makefile | Derive package version from Xcode project |
+| 2026-03-21 | `84bbe45c` | Update Makefile-arm64 | Same version-source cleanup for ARM64 build |
+| 2026-03-21 | `f74f6b9f` | Style: fix formatting and implicit returns | Style-only cleanup |
+| 2026-03-24 | `79c0d873` | Update README.md | README refresh |
+| 2026-04-08 | `839a01f1` | Delete CHANGELOG.md | Remove legacy changelog file |
+| 2026-04-09 | `58a8ea93` | update | Add `CLAUDE.md`, replace old report doc |
+| 2026-04-09 | `84e7a97a` | Refactor logging & JSON persist; bump version | First storage/logging refactor and 2.9.4 bump |
+| 2026-04-16 | `22a635e9` | Update README.md | README refresh |
+| 2026-04-30 | `0417aefb` | Updated RsyncAnalyse | Dependency update |
+| 2026-04-30 | `212254b9` | Merge pull request #85 from rsyncOSX/version-2.9.4 | Integration merge |
+| 2026-05-01 | `e53c08ad` | Update | Additional package resolution update |
+| 2026-05-01 | `c2c57abe` | Merge pull request #86 from rsyncOSX/version-2.9.4 | Integration merge |
+| 2026-05-01 | `cde60bc4` | Merge pull request #87 from rsyncOSX/main | Integration merge from main |
+| 2026-05-01 | `5d77d845` | Merge pull request #88 from rsyncOSX/version-2.9.4 | Integration merge |
+| 2026-05-02 | `d35aac7f` | Concurrency logfile | Logfile/logging concurrency cleanup |
+| 2026-05-02 | `c3f9965c` | Updated | Start removing thin actors / chart actor cleanup |
+| 2026-05-02 | `17b86d53` | Updates | Chart/log/profile-loading cleanup slice |
+| 2026-05-02 | `514e35f7` | Updates | Execution/logging/chart cleanup slice |
+| 2026-05-02 | `e093bd09` | Updates | Output helper cleanup |
+| 2026-05-02 | `6646cd56` | Merge pull request #89 from rsyncOSX/version-2.9.4 | Integration merge |
+| 2026-05-02 | `af1ba142` | Cleanup Plan | Add top-level cleanup plan doc |
+| 2026-05-02 | `3960220e` | Updates | Replace log read/chart actor layers with service-oriented code |
+| 2026-05-02 | `60552944` | Updates | Continue logging/chart execution cleanup |
+| 2026-05-02 | `9e128996` | Updates | Remove chart observable dependencies from view path |
+| 2026-05-02 | `58edc0c0` | Updates | Remove global-change task editing feature |
+| 2026-05-02 | `32b73152` | Updates | Remove small dead code (`AttachedVolumesService`, button style, quick task state) |
+| 2026-05-02 | `b768b7bd` | Updates | Add Copilot instructions and phase docs |
+| 2026-05-02 | `4b09b006` | Updates | Log store service + snapshot/log view integration |
+| 2026-05-02 | `7ce54ce1` | Updates | Add `LogChartService` and chart reducer tests |
+| 2026-05-02 | `20958ac5` | Updates | Continue log store/chart service cleanup |
+| 2026-05-02 | `144ad7c4` | Updates | Project/package integration adjustments |
+| 2026-05-02 | `50ecfa60` | Updates | Project file cleanup/update |
+| 2026-05-02 | `1e411d15` | Updates | Add phase 1 cleanup doc |
+| 2026-05-02 | `809e5d55` | Updates | Update phase 4 doc |
+| 2026-05-03 | `a51d53cf` | Updates | Remove `ActorCreateOutputforView`; simplify estimate/details/restore/quicktask output mapping |
+| 2026-05-03 | `2db9ac26` | Updates | Remove `ActorGetversionofRsyncUI`; wire plain helper into about/sidebar |
+| 2026-05-03 | `e7830374` | Updates | Add `SharedJSONStorageWriter`; centralize config/log writes; broader storage cleanup |
+| 2026-05-03 | `cd292915` | Updates | About view cleanup |
+| 2026-05-03 | `e74fb984` | Updates | Phase 1 doc update |
+| 2026-05-03 | `2ee839af` | Merge pull request #90 from rsyncOSX/version-2.9.4-cleanup | Cleanup integration merge |
+| 2026-05-03 | `d231efd0` | Version 2.9.5 | Version bump in project |
+| 2026-05-03 | `5277333a` | Remove warning 20 lines | Warning cleanup in estimate/execute/details |
+| 2026-05-03 | `dcfcf4ad` | Updates | Phase doc updates |
+| 2026-05-03 | `9553da42` | Updates | Add `LogStoreServiceTests`; continue log delete/view/snapshot cleanup |
+| 2026-05-03 | `597cc676` | Updates | Project file update |
+| 2026-05-04 | `307fed19` | Updates | More output/helper and snapshot/sidebar cleanup |
+| 2026-05-04 | `2aee2bd5` | Updates | Project file update |
+| 2026-05-04 | `e9c64de8` | Updates | Finish broader storage API cleanup across user/schedule/export/widget writes |
+| 2026-05-04 | `b496a295` | Updates | Project file update |
+| 2026-05-04 | `36226c77` | Updates | Continue read path/profile loading/log chart refresh cleanup |
+| 2026-05-04 | `6cfe48f1` | Updates | Final project file update at current HEAD |
+
+---
+
+## Appendix B: most important changed files by subsystem
+
+### Persistence/storage
+
+- `RsyncUI/Model/Storage/SharedJSONStorageWriter.swift`
+- `RsyncUI/Model/Storage/WriteSynchronizeConfigurationJSON.swift`
+- `RsyncUI/Model/Storage/WriteLogRecordsJSON.swift`
+- `RsyncUI/Model/Storage/Userconfiguration/WriteUserConfigurationJSON.swift`
+- `RsyncUI/Model/Storage/WriteSchedule.swift`
+- `RsyncUI/Model/Storage/ExportImport/WriteExportConfigurationsJSON.swift`
+- `RsyncUI/Model/Storage/Widgets/WriteWidgetsURLStringsJSON.swift`
+
+### Logging/log charts
+
+- `RsyncUI/Model/Loggdata/Logging.swift`
+- `RsyncUI/Model/Loggdata/LogStoreService.swift`
+- `RsyncUI/Model/Loggdata/LogChartService.swift`
+- `RsyncUI/Model/Storage/Actors/ActorReadLogRecords.swift`
+- `RsyncUI/Views/InspectorViews/LogRecords/LogRecordsTabView.swift`
+- `RsyncUI/Views/Tasks/LogStatsChartView.swift`
+- `RsyncUI/Views/Snapshots/SnapshotsView.swift`
+
+### Concurrency/helper cleanup
+
+- `RsyncUI/Model/Output/CreateOutputforView.swift`
+- `RsyncUI/Model/Newversion/GetversionofRsyncUI.swift`
+- `RsyncUI/Model/Execution/EstimateExecute/Estimate.swift`
+- `RsyncUI/Model/Execution/EstimateExecute/Execute.swift`
+
+### Removed files/features
+
+- `RsyncUI/Model/Global/ObservableChartData.swift`
+- `RsyncUI/Model/Storage/Actors/ActorLogChartsData.swift`
+- `RsyncUI/Model/Storage/Actors/ActorReadLogRecordsJSON.swift`
+- `RsyncUI/Model/Global/ObservableGlobalchangeConfigurations.swift`
+- `RsyncUI/Views/Configurations/ConfigurationsTableGlobalChanges.swift`
+- `RsyncUI/Views/InspectorViews/Add/GlobalChangeFormView.swift`
+- `RsyncUI/Views/InspectorViews/Add/GlobalChangeTaskView.swift`
+- `RsyncUI/Model/FilesAndCatalogs/AttachedVolumesService.swift`
+
