@@ -14,8 +14,7 @@ actor SharedJSONStorageReader {
     func decode<T: Decodable & Sendable>(_ type: T.Type, from fileURL: URL) async throws -> T {
         Logger.process.debugMessageOnly("SharedJSONStorageReader: reading from \(fileURL)")
         let data = try await Task.detached(priority: .utility) {
-            let data = try Data(contentsOf: fileURL)
-            return data
+            try Data(contentsOf: fileURL)
         }.value
         return try await decode(type, from: data)
     }
@@ -26,11 +25,11 @@ actor SharedJSONStorageReader {
         return try await decode(type, from: data)
     }
 
-    func decodeArray<T: Decodable & Sendable>(_ type: T.Type, from fileURL: URL) async throws -> [T] {
+    func decodeArray<T: Decodable & Sendable>(_: T.Type, from fileURL: URL) async throws -> [T] {
         try await decode([T].self, from: fileURL)
     }
 
-    func decodeArray<T: Decodable & Sendable>(_ type: T.Type, fromRemoteURL remoteURL: URL) async throws -> [T] {
+    func decodeArray<T: Decodable & Sendable>(_: T.Type, fromRemoteURL remoteURL: URL) async throws -> [T] {
         try await decode([T].self, fromRemoteURL: remoteURL)
     }
 
