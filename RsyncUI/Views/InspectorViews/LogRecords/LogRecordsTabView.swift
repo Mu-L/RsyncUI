@@ -37,9 +37,6 @@ struct LogRecordsTabView: View {
                         }
                     }
                 }
-                .onChange(of: selecteduuids) {
-                    updateLogsForSelection()
-                }
                 .onDeleteCommand {
                     confirmdelete = true
                 }
@@ -72,6 +69,7 @@ struct LogRecordsTabView: View {
                                  showInDebounce: showindebounce)
         }
         .searchable(if: selectedTab == .logview, text: $filterstring)
+        .task(id: selecteduuids) { updateLogsForSelection() }
         .task(id: rsyncUIdata.profile) { await loadLogsForProfile() }
         .task(id: filterstring) { try? await Task.sleep(seconds: 1)
             guard !Task.isCancelled else { return }
