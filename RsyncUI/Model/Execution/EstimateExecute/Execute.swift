@@ -165,7 +165,6 @@ final class Execute {
         }
     }
 
-    @discardableResult
     static func start(profile: String?,
                       configurations: [SynchronizeConfiguration],
                       selecteduuids: Set<UUID>,
@@ -184,7 +183,6 @@ final class Execute {
         return execute
     }
 
-    @discardableResult
     static func start(profile: String?,
                       configurations: [SynchronizeConfiguration],
                       selecteduuids: Set<UUID>,
