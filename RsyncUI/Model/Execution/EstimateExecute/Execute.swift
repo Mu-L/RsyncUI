@@ -14,7 +14,6 @@ import RsyncProcessStreaming
 final class Execute {
     private var localconfigurations: [SynchronizeConfiguration]
     private var structprofile: String?
-    private var setabort = false
 
     weak var localprogressdetails: ProgressDetails?
     weak var localnoestprogressdetails: NoEstProgressDetails?
@@ -242,7 +241,6 @@ final class Execute {
 
 extension Execute {
     private func processTermination(stringoutputfromrsync: [String]?, _ hiddenID: Int?) {
-        guard setabort == false else { return }
         guard let hiddenID else { return }
 
         // Log records

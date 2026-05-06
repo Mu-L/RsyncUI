@@ -93,7 +93,7 @@ RsyncUI/
 
 ### Concurrency
 
-Storage operations (JSON read/write) run on **actors**: `ActorReadSynchronizeConfigurationJSON`, `ActorLogToFile`, etc. All actor calls use `async/await`. Views initialize via `Task { }` blocks, never blocking the main thread.
+Shared JSON storage reads and writes flow through `SharedJSONStorageReader` and `SharedJSONStorageWriter`, while other storage helpers still use actors where needed. Views initialize via `Task { }` blocks, never blocking the main thread.
 
 ### Rsync Execution Pipeline
 
