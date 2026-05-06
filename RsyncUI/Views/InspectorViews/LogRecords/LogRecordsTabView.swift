@@ -19,8 +19,6 @@ struct LogRecordsTabView: View {
     // Filterstring
     @State private var filterstring: String = ""
     @State private var showindebounce: Bool = false
-    @State private var filterTask: Task<Void, Never>?
-    @State private var reloadTask: Task<Void, Never>?
 
     @State private var logrecords: [LogRecords]?
     @State private var logs: [Log] = []
@@ -38,9 +36,6 @@ struct LogRecordsTabView: View {
                             Text(result)
                         }
                     }
-                }
-                .onChange(of: selecteduuids) {
-                    updateLogsForSelection()
                 }
                 .onDeleteCommand {
                     confirmdelete = true
@@ -74,23 +69,11 @@ struct LogRecordsTabView: View {
                                  showInDebounce: showindebounce)
         }
         .searchable(if: selectedTab == .logview, text: $filterstring)
-        .task {
-            await loadInitialLogs()
-        }
-        .onChange(of: filterstring) {
-            showindebounce = true
-            filterTask?.cancel()
-            filterTask = Task {
-                try? await Task.sleep(seconds: 1)
-                guard Task.isCancelled == false else { return }
-                await updateLogsForFilter()
-            }
-        }
-        .onChange(of: rsyncUIdata.profile) {
-            reloadTask?.cancel()
-            reloadTask = Task {
-                await reloadLogsForProfile()
-            }
+        .task(id: selecteduuids) { updateLogsForSelection() }
+        .task(id: rsyncUIdata.profile) { await loadLogsForProfile() }
+        .task(id: filterstring) { try? await Task.sleep(seconds: 1)
+            guard !Task.isCancelled else { return }
+            await updateLogsForFilter()
         }
         .toolbar(content: {
             if selectedTab == .logview {
@@ -152,18 +135,6 @@ struct LogRecordsTabView: View {
         selectedloguuids.removeAll()
     }
 
-    private func loadInitialLogs() async {
-        logrecords = await LogStoreService.loadStore(
-            profile: rsyncUIdata.profile,
-            configurations: rsyncUIdata.configurations
-        )
-        logs = LogStoreService.visibleLogs(
-            from: logrecords,
-            configurations: rsyncUIdata.configurations,
-            configurationID: selecteduuids.first
-        )
-    }
-
     private func updateLogsForFilter() async {
         showindebounce = false
         logs = LogStoreService.visibleLogs(
@@ -174,7 +145,7 @@ struct LogRecordsTabView: View {
         )
     }
 
-    private func reloadLogsForProfile() async {
+    private func loadLogsForProfile() async {
         logs = []
         logrecords = nil
         showindebounce = true

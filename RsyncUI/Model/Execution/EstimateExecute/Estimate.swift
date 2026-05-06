@@ -99,7 +99,6 @@ final class Estimate {
         }
     }
 
-    @discardableResult
     static func start(profile: String?,
                       configurations: [SynchronizeConfiguration],
                       selecteduuids: Set<UUID>,
