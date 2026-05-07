@@ -68,32 +68,32 @@ RsyncUI has accumulated a mix of custom actors, `Task` usage, `@MainActor` file 
 
 ## Todo plan
 
-### Phase 1 - Inventory and safety rails
+### Phase 1 - Inventory and safety rails ✅
 
-- Build a full matrix of:
+- ✅ Build a full matrix of (see `phase1.md`):
   - every actor
   - every `Task {}` / `Task.detached`
   - every `@MainActor` storage/helper type
   - every persistence entry point
-- Classify each item as:
+- ✅ Classify each item as:
   - keep
   - convert to synchronous service
   - convert to async function without actor
   - centralize behind shared infrastructure
-- Confirm which async paths are mandatory for correctness:
+- ✅ Confirm which async paths are mandatory for correctness:
   - rsync process streaming
   - process termination callbacks
   - log-data read/write/sort pipeline
   - any UI-driven debounce/cancellation flows
 
-### Phase 2 - Storage consolidation
+### Phase 2 - Storage consolidation ✅
 
-- Introduce a shared storage abstraction for local JSON persistence:
+- ✅ Introduce a shared storage abstraction for local JSON persistence (`SharedJSONStorageWriter` / `SharedJSONStorageReader`):
   - path building
   - encode/decode
   - file write/read
   - uniform error propagation
-- Migrate these helpers onto the shared storage layer:
+- ✅ Migrate these helpers onto the shared storage layer:
   - `ReadSynchronizeConfigurationJSON`
   - `WriteSynchronizeConfigurationJSON`
   - `ReadUserConfigurationJSON`
@@ -101,29 +101,29 @@ RsyncUI has accumulated a mix of custom actors, `Task` usage, `@MainActor` file 
   - `ReadSchedule`
   - `WriteSchedule`
   - import/export/widget persistence helpers
-- Remove duplicated filename/path creation logic from individual helpers.
-- Decide case-by-case whether the remaining API should be plain sync or async, but avoid detached fire-and-forget persistence unless it is explicitly needed.
+- ✅ Remove duplicated filename/path creation logic from individual helpers.
+- ✅ Decide case-by-case whether the remaining API should be plain sync or async, but avoid detached fire-and-forget persistence unless it is explicitly needed.
 
-### Phase 3 - Concurrency cleanup
+### Phase 3 - Concurrency cleanup 🟡 Partial
 
-- Keep and harden log-data concurrency:
+- ✅ Keep and harden log-data concurrency (now reduced to `ActorLogToFile` and `ActorReadLogRecords`; `ActorLogChartsData` removed in favour of `LogChartService`):
   - `ActorLogToFile`
   - `ActorReadLogRecordsJSON`
   - `ActorLogChartsData`
-- Review whether each retained actor really needs actor isolation or whether one log-data service actor is enough.
-- Remove or replace thin actors:
+- ✅ Review whether each retained actor really needs actor isolation or whether one log-data service actor is enough.
+- ✅ Remove or replace thin actors:
   - `ActorCreateOutputforView`
   - `ActorGetversionofRsyncUI`
-- Reduce unstructured `Task` usage in views and models where the work is:
+- 🟡 Reduce unstructured `Task` usage in views and models where the work is:
   - immediate
   - non-cancellable
   - already on the main actor
   - simple synchronous mapping
-- Replace ad hoc `Task.detached` writes with structured persistence where possible.
+- ✅ Replace ad hoc `Task.detached` writes with structured persistence where possible.
 
-### Phase 4 - Log-data service unification
+### Phase 4 - Log-data service unification 🟡 Partial
 
-- Create one shared log-data domain service responsible for:
+- 🟡 Create one shared log-data domain service responsible for (`LogStoreService` and `LogChartService` cover most of these; snapshot merge still outside):
   - load
   - filter
   - sort
@@ -131,38 +131,38 @@ RsyncUI has accumulated a mix of custom actors, `Task` usage, `@MainActor` file 
   - delete
   - persist
   - chart preparation
-- Move duplicate logic out of:
+- 🟡 Move duplicate logic out of:
   - `Logging`
   - `LogRecordsTabView`
   - `SnapshotsView`
   - `ObservableChartData`
   - `LogStatsChartView`
-- Keep UI views focused on state and presentation instead of storage mutations and log transforms.
+- 🟡 Keep UI views focused on state and presentation instead of storage mutations and log transforms.
 
-### Phase 5 - High-value structural refactors
+### Phase 5 - High-value structural refactors 🟡 Partial
 
-- Split `Execute.swift` into smaller components:
+- 🟡 Split `Execute.swift` into smaller components (`Execute.start(...)`, `releaseStreamingReferences()`, `completeExecution()` landed; broader split still pending):
   - task queue/stack orchestration
   - process start
   - termination handling
   - log/config persistence
-- Simplify schedule handling by separating:
+- ❌ Simplify schedule handling by separating:
   - schedule generation
   - timer orchestration
   - wake recovery
   - persistence
-- Reduce duplication in profile/configuration loading across:
+- 🟡 Reduce duplication in profile/configuration loading across:
   - `RsyncUIView`
   - `SidebarMainView`
   - `extensionSidebarMainView`
   - `ConfigurationsTableLoadDataView`
-- Extract reusable helpers from large SwiftUI views where code is mixing state coordination with data access.
+- ❌ Extract reusable helpers from large SwiftUI views where code is mixing state coordination with data access.
 
-### Phase 6 - Validation and documentation
+### Phase 6 - Validation and documentation 🟡 Partial
 
-- Run the real Xcode-based validation path for the repo and record the correct commands in docs.
-- Update `CLAUDE.md` or other directly relevant documentation so it matches the actual project/test setup and the new storage/concurrency architecture.
-- Add or update tests around refactored log-data and configuration-loading behavior before large removals of duplication.
+- 🟡 Run the real Xcode-based validation path for the repo and record the correct commands in docs.
+- ✅ Update `CLAUDE.md` or other directly relevant documentation so it matches the actual project/test setup and the new storage/concurrency architecture.
+- ✅ Add or update tests around refactored log-data and configuration-loading behavior before large removals of duplication (`LogStoreServiceTests`, `LogChartReducerTests`, `SharedJSONStorageTests` added).
 
 ## Recommended execution order
 

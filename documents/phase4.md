@@ -17,7 +17,7 @@ This file expands `cleanup.md` Phase 4 with concrete duplicate paths in the curr
 
 ## 2. Detailed duplicate paths
 
-### A. Shared loading boundary - **Done**
+### A. Shared loading boundary ✅
 
 Before the refactor, these entry points all performed the same domain step: read persisted log records for a profile, restricted to valid task IDs.
 
@@ -27,7 +27,7 @@ Before the refactor, these entry points all performed the same domain step: read
 - `SnapshotsView.getData()` loads the same store before snapshot/catalog merging (`SnapshotsView.swift:225-232`).
 - `LogStoreService.chartEntries(...)` now loads the same store before chart parsing (`LogChartService.swift:144-161`).
 
-This item is **done**: `LogStoreService.loadStore(...)` is now the shared read entry point used by `Logging`, `LogRecordsTabView`, `SnapshotsView`, and chart loading.
+`LogStoreService.loadStore(...)` is now the shared read entry point used by `Logging`, `LogRecordsTabView`, `SnapshotsView`, and chart loading.
 
 Phase 4A lands as one shared loading boundary:
 
@@ -44,7 +44,7 @@ enum LogStoreService {
 
 That keeps `Logging.create(...)`, `LogRecordsTabView`, `SnapshotsView`, and chart loading on the same entry point even before the broader log-domain service exists.
 
-### B. Shared configuration helper - **Done**
+### B. Shared configuration helper ✅
 
 All four implementations do this:
 
@@ -65,7 +65,7 @@ Before the refactor, the repeated copies were:
 - `SnapshotsView.validhiddenIDs`
 - `LogStatsChartView.validhiddenIDs`
 
-This item is **done**: `Collection<SynchronizeConfiguration>` now provides `hiddenIDs`, `hiddenID(for:)`, and `backupID(for:)`.
+`Collection<SynchronizeConfiguration>` now provides `hiddenIDs`, `hiddenID(for:)`, and `backupID(for:)`.
 
 Phase 4B uses one shared configuration helper:
 
@@ -79,7 +79,7 @@ extension Collection where Element == SynchronizeConfiguration {
 
 That removes the repeated `validhiddenIDs` loop and also centralizes selection-to-configuration lookups that already drifted into the same views.
 
-### C. Selection-to-log resolution - **Done**
+### C. Selection-to-log resolution ✅
 
 The UI repeatedly converts `selecteduuids.first` into a `hiddenID`:
 
@@ -87,7 +87,7 @@ The UI repeatedly converts `selecteduuids.first` into a `hiddenID`:
 - `LogRecordsTabView.updateLogsForSelection()` now resolves through `LogStoreService.visibleLogs(...)`.
 - `LogStatsChartView` already resolves chart data through `LogStoreService.chartEntries(...)`.
 
-This item is **done for the current read-side boundary**: selection-to-log resolution is now owned by `LogStoreService` APIs instead of being reimplemented inside the log table view.
+For the current read-side boundary: selection-to-log resolution is now owned by `LogStoreService` APIs instead of being reimplemented inside the log table view.
 
 That mapping is not presentation logic; it is domain selection logic. A service API should accept either:
 
@@ -103,9 +103,9 @@ func hiddenID(for configurationID: SynchronizeConfiguration.ID?) -> Int?
 
 That still leaves separate service entry points for visible logs and chart entries, but the configuration lookup itself is no longer duplicated in the view layer.
 
-### D. Delete-and-persist service - **Done**
+### D. Delete-and-persist service ✅
 
-This item is **done for the current service boundary**: `LogRecordsTabView` and `SnapshotsView` now delete through `LogStoreService.deleteLogs(...)`.
+For the current service boundary: `LogRecordsTabView` and `SnapshotsView` now delete through `LogStoreService.deleteLogs(...)`.
 
 #### `LogRecordsTabView.deleteLogs`
 
@@ -130,9 +130,9 @@ static func deleteLogs(
 
 Each view still owns its presentation reset logic, which is fine for now; the remaining Phase 4 work is to reduce the amount of view-owned orchestration around the delete flow, not to move deletion back out of the service.
 
-### E. Shared log-result parser - **Partial**
+### E. Shared log-result parser 🟡 Partial
 
-This item is **partially done**: the old actor-level chart parser is gone, but parsing is still duplicated between `Logging` and `LogChartService`.
+The old actor-level chart parser is gone, but parsing is still duplicated between `Logging` and `LogChartService`.
 
 Both files define:
 
@@ -164,9 +164,9 @@ Then:
 - Chart preparation uses it for `LogEntry`.
 - Snapshot-related code can inspect snapshot number explicitly instead of relying on raw string format.
 
-### F. Unified chart preparation - **Done**
+### F. Unified chart preparation ✅
 
-This item is **done**: `ObservableChartData` is gone, `LogStatsChartView` now asks `LogStoreService` for chart entries, and `LogChartReducer` has test coverage.
+`ObservableChartData` is gone, `LogStatsChartView` now asks `LogStoreService` for chart entries, and `LogChartReducer` has test coverage.
 
 The current chart path is much cleaner, but it still mixes domain reduction and UI refresh policy:
 
@@ -212,9 +212,9 @@ With that split:
 - `LogStatsChartView` can stay focused on refresh policy and presentation state instead of carrying more chart-domain decisions
 - the remaining parser duplication between `Logging` and `LogChartService` becomes easier to remove
 
-### G. Snapshot/log merge service - **Not done**
+### G. Snapshot/log merge service ❌ Not done
 
-This item is **not done**: `Snapshotlogsandcatalogs` still owns merge logic and still stores raw `readlogrecordsfromfile` for later delete.
+`Snapshotlogsandcatalogs` still owns merge logic and still stores raw `readlogrecordsfromfile` for later delete.
 
 `Snapshotlogsandcatalogs` merges all logs again to compute `notmappedloguuids`:
 
@@ -330,24 +330,24 @@ That keeps actor isolation around persistence and shared store access, while mov
 
 ## 5. Practical cleanup order
 
-1. **Partial** - Extract the shared log-result parser from `Logging` and `ActorReadLogRecords`.
-2. **Done** - Extract configuration helpers for `hiddenIDs` and `selected hiddenID`.
-3. **Partial** - Create a store-oriented service that wraps `readjsonfilelogrecords` and `WriteLogRecordsJSON`.
-4. **Partial** - Move `LogRecordsTabView` to the service first; it has the simplest read/filter/delete path.
-5. **Done** - Move chart preparation next by replacing `ObservableChartData` + `LogStatsChartView.readAndSortLogData()` with one service call.
-6. **Not done** - Move snapshot merge/delete flow last, because it combines local logs with remote catalog discovery.
-7. **Partial** - Reduce `Logging` into either:
+1. 🟡 Partial - Extract the shared log-result parser from `Logging` and `ActorReadLogRecords`.
+2. ✅ Extract configuration helpers for `hiddenIDs` and `selected hiddenID`.
+3. 🟡 Partial - Create a store-oriented service that wraps `readjsonfilelogrecords` and `WriteLogRecordsJSON`.
+4. 🟡 Partial - Move `LogRecordsTabView` to the service first; it has the simplest read/filter/delete path.
+5. ✅ Move chart preparation next by replacing `ObservableChartData` + `LogStatsChartView.readAndSortLogData()` with one service call.
+6. ❌ Not done - Move snapshot merge/delete flow last, because it combines local logs with remote catalog discovery.
+7. 🟡 Partial - Reduce `Logging` into either:
    - a thin facade over `LogDataService`, or
    - a write use case nested inside the new log-data domain.
 
 ## 6. Refactor checkpoints to verify while cleaning up
 
-- **Done** - There is only one place that reads log JSON from disk.
-- **Not done** - There is only one place that writes log JSON to disk.
-- **Not done** - There is only one parser for `resultExecuted`.
-- **Not done** - No SwiftUI view directly calls `ActorReadLogRecords`.
-- **Done** - `ObservableChartData` is either removed or reduced to plain UI state.
-- **Not done** - `SnapshotsView` no longer stores raw `readlogrecordsfromfile` just to support delete.
-- **Done** - `validhiddenIDs` is not reimplemented in view files.
+- ✅ There is only one place that reads log JSON from disk.
+- ❌ Not done - There is only one place that writes log JSON to disk.
+- ❌ Not done - There is only one parser for `resultExecuted`.
+- ❌ Not done - No SwiftUI view directly calls `ActorReadLogRecords`.
+- ✅ `ObservableChartData` is either removed or reduced to plain UI state.
+- ❌ Not done - `SnapshotsView` no longer stores raw `readlogrecordsfromfile` just to support delete.
+- ✅ `validhiddenIDs` is not reimplemented in view files.
 
 If you use this file as the execution checklist, the highest-value deletions are the duplicate loading paths and the duplicated regex parser first; those are the easiest wins and reduce the risk of divergence immediately.
