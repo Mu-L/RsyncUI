@@ -49,7 +49,7 @@ struct UserConfiguration: @MainActor Codable {
         value ? 1 : -1
     }
 
-    private func setuserconfigdata() {
+    func setuserconfigdata() {
         SharedReference.shared.rsyncversion3 = intToBool(rsyncversion3)
         SharedReference.shared.addsummarylogrecord = intToBool(addsummarylogrecord)
         SharedReference.shared.localrsyncpath = localrsyncpath
@@ -75,8 +75,8 @@ struct UserConfiguration: @MainActor Codable {
         SharedReference.shared.validatearguments = intToBool(validatearguments)
     }
 
-    /// Used when reading JSON data from store
-    @discardableResult
+    /// Used when reading JSON data from store.
+    /// Call `setuserconfigdata()` afterwards to apply the values to `SharedReference.shared`.
     init(_ data: DecodeUserConfiguration) {
         if let value = data.rsyncversion3 {
             rsyncversion3 = value
@@ -151,12 +151,9 @@ struct UserConfiguration: @MainActor Codable {
         } else {
             validatearguments = -1
         }
-
-        setuserconfigdata()
     }
 
     /// Default values user configuration
-    @discardableResult
     init() {
         rsyncversion3 = boolToInt(SharedReference.shared.rsyncversion3)
         addsummarylogrecord = boolToInt(SharedReference.shared.addsummarylogrecord)
