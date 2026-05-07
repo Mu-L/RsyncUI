@@ -49,7 +49,7 @@ struct LogfileView: View {
 
     @MainActor
     private func reset() async {
-        await ActorLogToFile().reset()
+        await ActorLogToFile.shared.reset()
         await loadLogfile()
     }
 }

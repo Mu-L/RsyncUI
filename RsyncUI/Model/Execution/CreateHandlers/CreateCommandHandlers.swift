@@ -21,7 +21,7 @@ struct CreateCommandHandlers {
                 SharedReference.shared.errorobject?.alert(error: error)
             },
             logger: { command, output in
-                _ = await ActorLogToFile().logOutput(command, output)
+                _ = await ActorLogToFile.shared.logOutput(command, output)
             },
             rsyncui: true
         )

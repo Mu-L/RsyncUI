@@ -187,8 +187,8 @@ final class ObservableSchedules {
             globaltimer.scheduledprofile = schedule.profile ?? "Default"
             Task {
                 // Logging to file that a Schedule is fired
-                await ActorLogToFile().logOutput("Schedule",
-                                                 ["ObservableSchedules: schedule FIRED for \(schedule.profile ?? "Default")"])
+                await ActorLogToFile.shared.logOutput("Schedule",
+                                                      ["ObservableSchedules: schedule FIRED for \(schedule.profile ?? "Default")"])
             }
         }
         // Then add new schedule
