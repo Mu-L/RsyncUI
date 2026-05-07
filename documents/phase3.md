@@ -34,7 +34,7 @@ This item is ✅ for Phase 3A: the actor surface is smaller, chart preparation i
 
 What is already cleaner:
 
-- `ActorLogToFile` remains the serialized logfile boundary for execution logging, schedule logging, SSH key logging, and logfile reset/read.
+- `ActorLogToFile` is the serialized logfile boundary for execution logging, schedule logging, SSH key logging, and logfile reset/read. It is now a singleton (`ActorLogToFile.shared`, with a private `init()`), so all callers serialize against one actor instance — previously each call site allocated its own `ActorLogToFile()`, which meant concurrent writes did not actor-isolate against each other.
 - `LogStoreService.loadStore(...)` is now the shared read entry point for persisted log records.
 - `LogStoreService.visibleLogs(...)` now owns selection, merge, sort, and filter work for log presentation.
 - `LogStoreService.deleteLogs(...)` now owns delete-and-persist orchestration for log-store mutations.

@@ -46,7 +46,7 @@ struct CreateOutputforView {
     /// Logfile
     func createaoutputlogfileforview() async -> [LogfileRecords] {
         Logger.process.debugThreadOnly("CreateOutputforView: createaoutputlogfileforview()")
-        if let data = await ActorLogToFile().readloggfile() {
+        if let data = await ActorLogToFile.shared.readloggfile() {
             return data.map { record in
                 LogfileRecords(line: record)
             }

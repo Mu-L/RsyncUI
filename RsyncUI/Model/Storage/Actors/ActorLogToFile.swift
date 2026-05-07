@@ -21,6 +21,8 @@ enum FilesizeError: LocalizedError {
 }
 
 actor ActorLogToFile {
+    static let shared = ActorLogToFile()
+
     private var homepath: Homepath?
     private let fileManager = FileManager.default
     private let logName = SharedConstants().logname
@@ -127,7 +129,7 @@ actor ActorLogToFile {
 
     // MARK: - Initializers
 
-    init() {}
+    private init() {}
 
     // MARK: - Reset and Logging Methods
 
