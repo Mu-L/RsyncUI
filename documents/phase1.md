@@ -4,19 +4,19 @@ This file expands `cleanup.md` Phase 1 with a concrete inventory of the current 
 
 ## 1. Current-state summary
 
-- **Done - 1A. Actor ownership inventory:** App-owned actors now live in two files:
+- ✅ **1A. Actor ownership inventory:** App-owned actors now live in two files:
   - `RsyncUI/Model/Storage/Actors/ActorLogToFile.swift:23`
   - `RsyncUI/Model/Storage/Actors/ActorReadLogRecords.swift:12`
-- **Done - 1B. Thin actor removal:** Thin actor removals already landed:
+- ✅ **1B. Thin actor removal:** Thin actor removals already landed:
   - `RsyncUI/Model/Output/CreateOutputforView.swift:10`
   - `RsyncUI/Model/Newversion/GetversionofRsyncUI.swift:11`
-- **Done - 1D. Explicit detached exception:** The only executable `Task.detached` site is:
+- ✅ **1D. Explicit detached exception:** The only executable `Task.detached` site is:
   - `RsyncUI/Model/Execution/CreateHandlers/CreateStreamingHandlers.swift:92-95`
-- **Done - 1C. Detached JSON writes:** The shared async JSON write boundary already exists:
+- ✅ **1C. Detached JSON writes:** The shared async JSON write boundary already exists:
   - `RsyncUI/Model/Storage/SharedJSONStorageWriter.swift:9-18`
   - `RsyncUI/Model/Storage/WriteSynchronizeConfigurationJSON.swift:12-38`
   - `RsyncUI/Model/Storage/WriteLogRecordsJSON.swift:12-38`
-- **Done - 1E. Async caller propagation:** The storage layer is now split across:
+- ✅ **1E. Async caller propagation:** The storage layer is now split across:
   - `@MainActor` read/write helpers that still build paths and encode/decode
   - actor-based log persistence and logfile serialization
   - one shared awaited JSON writer for configuration/log-store writes
@@ -29,28 +29,28 @@ This file expands `cleanup.md` Phase 1 with a concrete inventory of the current 
   - `RsyncUI/Model/Loggdata/LogStoreService.swift:10-32`
   - `hiddenIDs`, `hiddenID(for:)`, and `backupID(for:)` are already centralized there.
 
-**Partial - 1F. Post-removal adapter cleanup:** The actor removals are landed, but several downstream `Task` bridges that call `CreateOutputforView` still remain and are cataloged below in the task inventory and refactor seams.
+🟡 **1F. Post-removal adapter cleanup (Partial):** The actor removals are landed, but several downstream `Task` bridges that call `CreateOutputforView` still remain and are cataloged below in the task inventory and refactor seams.
 
 ## 2. Actor matrix
 
 | Type | Current location | What it owns today | Status | Notes |
 |---|---|---|---|---|
-| `ActorLogToFile` | `RsyncUI/Model/Storage/Actors/ActorLogToFile.swift:23-149` | Cached `Homepath`, serialized logfile append/read/reset, file-size checks, error propagation | **Done** | This remains the intended serialized logfile boundary. Phase 1 outcome is to keep it actor-isolated. |
-| `ActorReadLogRecords` | `RsyncUI/Model/Storage/Actors/ActorReadLogRecords.swift:12-127` | Reads persisted log JSON, filters by valid IDs, merges logs, filters logs, deletes logs | **Done** | This is still present by design for Phase 1. `LogStoreService.loadStore(...)` is now the shared read boundary, and Phase 4 remains the place to move view-owned mutations behind one service API. |
-| `ActorCreateOutputforView` | `RsyncUI/Model/Output/CreateOutputforView.swift:10-57` | Replaced by a plain helper that maps rsync/logfile output into view models and still delegates logfile reads to `ActorLogToFile` | **Done** | The actor was removed. Remaining follow-up work is downstream task-adapter cleanup in views/models that still call the helper asynchronously. |
-| `ActorGetversionofRsyncUI` | `RsyncUI/Model/Newversion/GetversionofRsyncUI.swift:11-37` | Replaced by a plain async fetch helper that loads version JSON and exposes `getversionsofrsyncui()` / `downloadlinkofrsyncui()` | **Done** | The actor boundary is gone; `SidebarMainView` and `AboutView` now call the async helper directly. |
+| `ActorLogToFile` | `RsyncUI/Model/Storage/Actors/ActorLogToFile.swift:23-149` | Cached `Homepath`, serialized logfile append/read/reset, file-size checks, error propagation | ✅ | This remains the intended serialized logfile boundary. Phase 1 outcome is to keep it actor-isolated. |
+| `ActorReadLogRecords` | `RsyncUI/Model/Storage/Actors/ActorReadLogRecords.swift:12-127` | Reads persisted log JSON, filters by valid IDs, merges logs, filters logs, deletes logs | ✅ | This is still present by design for Phase 1. `LogStoreService.loadStore(...)` is now the shared read boundary, and Phase 4 remains the place to move view-owned mutations behind one service API. |
+| `ActorCreateOutputforView` | `RsyncUI/Model/Output/CreateOutputforView.swift:10-57` | Replaced by a plain helper that maps rsync/logfile output into view models and still delegates logfile reads to `ActorLogToFile` | ✅ | The actor was removed. Remaining follow-up work is downstream task-adapter cleanup in views/models that still call the helper asynchronously. |
+| `ActorGetversionofRsyncUI` | `RsyncUI/Model/Newversion/GetversionofRsyncUI.swift:11-37` | Replaced by a plain async fetch helper that loads version JSON and exposes `getversionsofrsyncui()` / `downloadlinkofrsyncui()` | ✅ | The actor boundary is gone; `SidebarMainView` and `AboutView` now call the async helper directly. |
 
 ## 3. `Task.detached` matrix
 
 | Location | Current status | Verification | Notes |
 |---|---|---|---|
-| `RsyncUI/Model/Storage/WriteSynchronizeConfigurationJSON.swift` | **Done** | `WriteSynchronizeConfigurationJSON.write(...)` now awaits `SharedJSONStorageWriter.shared.write(...)`; no `Task.detached` remains in the file. | The detached configuration write is removed. Ordering and error propagation now flow through an explicit async boundary. |
-| `RsyncUI/Model/Storage/WriteLogRecordsJSON.swift` | **Done** | `WriteLogRecordsJSON.write(...)` now awaits `SharedJSONStorageWriter.shared.write(...)`; no `Task.detached` remains in the file. | The detached log-store write is removed for the same reason as configuration writes. |
-| `RsyncUI/Model/Execution/CreateHandlers/CreateStreamingHandlers.swift:92-95` | **Done** | Repository-wide search shows this is now the only executable `Task.detached` site. | This remains the documented exception because it intentionally sheds main-actor isolation for the debug-only threading assertion. |
+| `RsyncUI/Model/Storage/WriteSynchronizeConfigurationJSON.swift` | ✅ | `WriteSynchronizeConfigurationJSON.write(...)` now awaits `SharedJSONStorageWriter.shared.write(...)`; no `Task.detached` remains in the file. | The detached configuration write is removed. Ordering and error propagation now flow through an explicit async boundary. |
+| `RsyncUI/Model/Storage/WriteLogRecordsJSON.swift` | ✅ | `WriteLogRecordsJSON.write(...)` now awaits `SharedJSONStorageWriter.shared.write(...)`; no `Task.detached` remains in the file. | The detached log-store write is removed for the same reason as configuration writes. |
+| `RsyncUI/Model/Execution/CreateHandlers/CreateStreamingHandlers.swift:92-95` | ✅ | Repository-wide search shows this is now the only executable `Task.detached` site. | This remains the documented exception because it intentionally sheds main-actor isolation for the debug-only threading assertion. |
 
 Phase 1 landing for the first two rows is complete: both JSON writes route through one shared actor-backed file writer, path building and encoding stay on the main actor, and `WriteSynchronizeConfigurationJSON.write` / `WriteLogRecordsJSON.write` are the awaited entry points. Sync UI actions may still bridge with `Task`, but persistence itself is no longer fire-and-forget detached work.
 
-This means both **1C** and **1D** are **done** in the detailed matrix above.
+This means both **1C** ✅ and **1D** ✅ are landed in the detailed matrix above.
 
 ## 4. `@MainActor` storage and helper types
 
@@ -224,6 +224,6 @@ These are the safety rails for later phases. If any of these are removed too ear
 
 The first three execution edits from this file are now landed:
 
-1. `GetversionofRsyncUI` is a plain async service,
-2. `CreateOutputforView` is a plain helper instead of an actor, and
-3. `WriteSynchronizeConfigurationJSON` / `WriteLogRecordsJSON` now write through one awaited shared storage writer.
+1. ✅ `GetversionofRsyncUI` is a plain async service,
+2. ✅ `CreateOutputforView` is a plain helper instead of an actor, and
+3. ✅ `WriteSynchronizeConfigurationJSON` / `WriteLogRecordsJSON` now write through one awaited shared storage writer.
