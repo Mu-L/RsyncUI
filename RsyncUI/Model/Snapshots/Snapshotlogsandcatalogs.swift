@@ -19,6 +19,7 @@ final class Snapshotlogsandcatalogs {
     private var activeStreamingProcess: RsyncProcessStreaming.RsyncProcess?
 
     func getremotecataloginfo() {
+        guard config.task == SharedReference.shared.snapshot else { return }
         streamingHandlers = CreateStreamingHandlers().createHandlers(
             fileHandler: { _ in },
             processTermination: { output, hiddenID in
@@ -115,10 +116,7 @@ final class Snapshotlogsandcatalogs {
          snapshotdata: ObservableSnapshotData) {
         self.config = config
         self.logrecords = logrecords
-        guard config.task == SharedReference.shared.snapshot else { return }
-
         mysnapshotdata = snapshotdata
-        getremotecataloginfo()
     }
 
     deinit {

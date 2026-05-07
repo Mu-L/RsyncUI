@@ -224,11 +224,11 @@ extension SnapshotsView {
             configurations: rsyncUIdata.configurations
         )
 
-        _ = Snapshotlogsandcatalogs(
+        Snapshotlogsandcatalogs(
             config: config,
             logrecords: logrecords,
             snapshotdata: snapshotdata
-        )
+        ).getremotecataloginfo()
     }
 
     func tagSnapshots() {
