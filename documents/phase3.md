@@ -4,8 +4,8 @@ This file expands `cleanup.md` Phase 3 with current progress from the codebase a
 
 ## 1. Current-state summary
 
-- ✅ **3A. Log-data actor reduction:** `cleanup.md` originally kept three log-data actors: `ActorLogToFile`, `ActorReadLogRecordsJSON`, and `ActorLogChartsData`. The current tree is down to two actor files: `ActorLogToFile.swift` and `ActorReadLogRecords.swift`. Chart preparation moved into `LogChartService` and `LogStoreService`, SwiftUI views now call `LogStoreService` instead of `ActorReadLogRecords`, and `ActorReadLogRecords` is reduced to JSON read responsibility.
-- ✅ **3B. Thin actor removal:** `ActorCreateOutputforView` and `ActorGetversionofRsyncUI` were replaced by plain helper structs: `CreateOutputforView.swift` and `GetversionofRsyncUI.swift`.
+- ✅ **3A. Log-data actor reduction:** `cleanup.md` originally kept three log-data actors: `ActorLogToFile`, `ActorReadLogRecordsJSON`, and `ActorLogChartsData`. The intermediate state had two (`ActorLogToFile.swift` and `ActorReadLogRecords.swift`); after `c6bda5c0` the read wrapper was inlined into `LogStoreService.loadStore` and deleted, so only `ActorLogToFile.swift` remains as an app-owned domain actor. Chart preparation lives in `LogChartService` / `LogStoreService`, SwiftUI views call `LogStoreService` only, and the actual JSON decode is owned by `SharedJSONStorageReader.shared`.
+- ✅ **3B. Thin actor removal:** `ActorCreateOutputforView` was replaced by the plain helper `CreateOutputforView.swift`. `ActorGetversionofRsyncUI` first became the plain helper `GetversionofRsyncUI.swift`, then in `c6bda5c0` was promoted to an actor singleton (`GetversionofRsyncUI.shared`) with a per-session cache to coalesce the remote JSON fetch across `SidebarMainView` and `AboutView`.
 - ✅ **3C. Detached persistence replacement:** `WriteSynchronizeConfigurationJSON.write(...)` and `WriteLogRecordsJSON.write(...)` now await `SharedJSONStorageWriter.shared.write(...)` instead of launching detached fire-and-forget writes.
 - 🟡 **3D. Unstructured `Task` cleanup (Partial):** current search now finds 50 `Task {}` sites. The first downstream cleanup slice landed: pure `CreateOutputforView` mapping calls in quick task, verify/details, restore-after-execute, logfile reload, and estimate flows no longer need adapter-style helper tasks. Several valid callback bridges, debounce flows, and UI timing delays still remain, along with a smaller set of view-owned orchestration tasks.
 - 🟡 **3E. Single log-data boundary review (Partial):** chart loading is centralized behind `LogStoreService.chartEntries(...)`, log filtering/delete/selection resolve through `LogStoreService`, and snapshot loading now funnels through one `loadSnapshotData(for:)` entry point in `SnapshotsView`. Snapshot assembly and some write-side log-domain work are still split between `LogStoreService`, `Logging`, `SnapshotsView`, and snapshot helpers.
@@ -14,10 +14,10 @@ This file expands `cleanup.md` Phase 3 with current progress from the codebase a
 
 | Area | Current location / git evidence | Status | Notes |
 |---|---|---|---|
-| 3A. Log-data actor reduction | `3960220e` deleted `ActorLogChartsData.swift` and replaced `ActorReadLogRecordsJSON.swift` with `ActorReadLogRecords.swift`; `7ce54ce1` deleted `ObservableChartData.swift` and added `LogChartService.swift` | ✅ | The actor count is reduced, views now route log selection/filter/delete through `LogStoreService`, and `ActorReadLogRecords` is back to storage-only reads. |
-| 3B. Thin actor removal | `a51d53cf` renamed `ActorCreateOutputforView.swift` to `CreateOutputforView.swift`; `2db9ac26` renamed `ActorGetversionofRsyncUI.swift` to `GetversionofRsyncUI.swift` | ✅ | The actor wrappers are gone. Remaining work is call-site cleanup, not actor removal. |
+| 3A. Log-data actor reduction | `3960220e` deleted `ActorLogChartsData.swift` and replaced `ActorReadLogRecordsJSON.swift` with `ActorReadLogRecords.swift`; `7ce54ce1` deleted `ObservableChartData.swift` and added `LogChartService.swift`; `c6bda5c0` inlined `ActorReadLogRecords` into `LogStoreService.loadStore` and deleted the actor file | ✅ | Only `ActorLogToFile.swift` remains as an app-owned log-domain actor. Views call `LogStoreService`; decode is owned by `SharedJSONStorageReader.shared`. |
+| 3B. Thin actor removal | `a51d53cf` renamed `ActorCreateOutputforView.swift` to `CreateOutputforView.swift`; `2db9ac26` renamed `ActorGetversionofRsyncUI.swift` to `GetversionofRsyncUI.swift`; `c6bda5c0` promoted `GetversionofRsyncUI` back to an actor singleton (`.shared`) for cross-view fetch coalescing | ✅ | The original "wrapper actor with no isolation value" is gone. The current actor exists deliberately to cache the remote JSON across `SidebarMainView` and `AboutView`. |
 | 3C. Detached persistence replacement | `d35aac7f` started logfile concurrency cleanup; `e7830374` added `SharedJSONStorageWriter.swift` and updated both JSON writers | ✅ | Detached persistence is removed from configuration and log-store writes. |
-| 3D. Unstructured `Task` cleanup | Current search now shows 50 `Task {}` sites, 1 `ActorReadLogRecords(...)` call site, 7 `CreateOutputforView()` call sites, and 2 `GetversionofRsyncUI()` call sites | 🟡 Partial | The first adapter-cleanup slice is landed, but several orchestration and sync-entry wrapper tasks remain. |
+| 3D. Unstructured `Task` cleanup | Current search shows 50 `Task {}` sites; `ActorReadLogRecords(...)` call sites are 0 (actor deleted in `c6bda5c0`); 7 `CreateOutputforView()` call sites; `GetversionofRsyncUI` call sites now use `.shared` | 🟡 Partial | The first adapter-cleanup slice is landed and the read wrapper is gone, but several orchestration and sync-entry wrapper tasks remain. |
 | 3E. Single log-data boundary review | `LogStoreService.swift`, `LogChartService.swift`, `LogRecordsTabView.swift:140-204`, `SnapshotsView.swift:192-280` | 🟡 Partial | Chart entry creation is centralized, delete/filter/select flows live behind `LogStoreService`, and snapshot reload now goes through `loadSnapshotData(for:)`, but snapshot assembly is still initiated from the view and write-side log-domain work is still split. |
 
 ## 3. Detailed cleanup areas
@@ -29,6 +29,7 @@ The original Phase 3 plan kept three log-data actors. Current git updates alread
 - `3960220e` deleted `ActorLogChartsData.swift`.
 - `3960220e` also replaced `ActorReadLogRecordsJSON.swift` with `ActorReadLogRecords.swift`.
 - `7ce54ce1` deleted `ObservableChartData.swift` and introduced `LogChartService.swift`, moving chart preparation into pure reducers behind `LogStoreService.chartEntries(...)`.
+- `c6bda5c0` inlined `ActorReadLogRecords.readjsonfilelogrecords(...)` into `LogStoreService.loadStore(...)` and deleted `ActorReadLogRecords.swift`. Path construction and the post-decode `validHiddenIDs` filter now live directly in `LogStoreService`; the decode itself is owned by `SharedJSONStorageReader.shared`.
 
 This item is ✅ for Phase 3A: the actor surface is smaller, chart preparation is no longer actor-owned, and the remaining actor is no longer called directly from SwiftUI views for selection/filter/delete work.
 
@@ -39,7 +40,7 @@ What is already cleaner:
 - `LogStoreService.visibleLogs(...)` now owns selection, merge, sort, and filter work for log presentation.
 - `LogStoreService.deleteLogs(...)` now owns delete-and-persist orchestration for log-store mutations.
 - `LogStoreService.chartEntries(...)` resolves chart data through `LogChartReducer` without reintroducing a chart actor.
-- `ActorReadLogRecords` is reduced to `readjsonfilelogrecords(...)`, which keeps the actor focused on serialized log-store reads.
+- `ActorReadLogRecords` was deleted in `c6bda5c0`; `LogStoreService.loadStore(...)` now does path construction + decode (via `SharedJSONStorageReader.shared`) + the `validHiddenIDs` filter directly, with no wrapper actor in between.
 
 What still remains after 3A:
 
@@ -59,12 +60,12 @@ Git shows the actor wrappers were replaced in place:
 Current replacements:
 
 - `CreateOutputforView.swift` is now a plain helper struct. The pure output-mapping helpers are synchronous, while the logfile and restore-list helpers stay async where they still cross storage or trimming boundaries.
-- `GetversionofRsyncUI.swift` is now a plain helper struct that fetches version metadata and exposes `getversionsofrsyncui()` and `downloadlinkofrsyncui()`.
+- `GetversionofRsyncUI.swift` is now an actor singleton (`GetversionofRsyncUI.shared`) with a per-session cache of matching versions; `getversionsofrsyncui()` and `downloadlinkofrsyncui()` both consult the cache so the remote JSON is fetched at most once per session (`c6bda5c0`).
 
 Current direct helper use shows the actor removal is landed:
 
 - `Estimate.swift`, `ObservableRestore.swift`, `OneTaskDetailsView.swift`, `VerifyTaskTabView.swift`, `RestoreTableView.swift`, `extensionQuickTaskView.swift`, and `LogfileView.swift` all still call `CreateOutputforView()` directly, but the pure-mapping call sites no longer need `await`.
-- `SidebarMainView.swift` and `AboutView.swift` both call `GetversionofRsyncUI()` directly.
+- `SidebarMainView.swift:164` and `AboutView.swift:148` both call `GetversionofRsyncUI.shared`.
 
 The remaining work here is the smaller set of true async helper/service entry points, not bringing the actors back.
 
@@ -160,7 +161,7 @@ One reasonable end state is now visible in the code:
 
 ### Finish collapsing
 
-- move `ActorReadLogRecords` call sites behind `LogStoreService`
+- ✅ `ActorReadLogRecords` is gone; `LogStoreService.loadStore` is the single read entry point (`c6bda5c0`).
 - keep `LogChartService` pure and reusable
 - simplify `CreateOutputforView` call sites so the helper can stay plain without extra adapter tasks
 
@@ -180,7 +181,7 @@ One reasonable end state is now visible in the code:
 - ✅ No persistence path uses `Task.detached`.
 - ✅ Chart preparation no longer depends on `ActorLogChartsData` or `ObservableChartData`.
 - 🟡 Partial - `Task {}` sites are reduced to 50, and the first helper-wrapper cleanup slice is landed, but several adapter/orchestration tasks still remain.
-- ✅ `ActorReadLogRecords` is smaller in scope than the old read/chart split, and views no longer call it directly.
+- ✅ `ActorReadLogRecords` was deleted in `c6bda5c0`; `LogStoreService.loadStore` is the only read entry point and decode runs through `SharedJSONStorageReader.shared`.
 - ✅ No SwiftUI view directly owns log delete/filter logic.
 - ❌ Not done - The remaining `Task {}` sites are not yet fully reduced to callback bridges, debounce flows, or intentional timing delays.
 

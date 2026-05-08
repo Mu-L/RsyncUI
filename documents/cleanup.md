@@ -106,14 +106,14 @@ RsyncUI has accumulated a mix of custom actors, `Task` usage, `@MainActor` file 
 
 ### Phase 3 - Concurrency cleanup 🟡 Partial
 
-- ✅ Keep and harden log-data concurrency (now reduced to `ActorLogToFile` and `ActorReadLogRecords`; `ActorLogChartsData` removed in favour of `LogChartService`):
-  - `ActorLogToFile`
-  - `ActorReadLogRecordsJSON`
-  - `ActorLogChartsData`
+- ✅ Keep and harden log-data concurrency (now reduced to a single app-owned domain actor — `ActorLogToFile` — alongside the shared JSON read/write singletons; `ActorLogChartsData` was removed in favour of `LogChartService`, and `ActorReadLogRecords` was inlined into `LogStoreService.loadStore` and deleted in `c6bda5c0`):
+  - `ActorLogToFile` (singleton)
+  - `ActorReadLogRecordsJSON` *(removed; succeeded by `ActorReadLogRecords`, now also removed)*
+  - `ActorLogChartsData` *(removed)*
 - ✅ Review whether each retained actor really needs actor isolation or whether one log-data service actor is enough.
 - ✅ Remove or replace thin actors:
-  - `ActorCreateOutputforView`
-  - `ActorGetversionofRsyncUI`
+  - `ActorCreateOutputforView` *(replaced by plain helper `CreateOutputforView`)*
+  - `ActorGetversionofRsyncUI` *(replaced by plain helper, then re-promoted to a deliberate actor singleton `GetversionofRsyncUI.shared` with a per-session cache in `c6bda5c0` to coalesce the remote JSON fetch across views)*
 - 🟡 Reduce unstructured `Task` usage in views and models where the work is:
   - immediate
   - non-cancellable
