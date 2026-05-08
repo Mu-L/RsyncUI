@@ -4,9 +4,9 @@ This file expands `cleanup.md` Phase 1 with a concrete inventory of the current 
 
 ## 1. Current-state summary
 
-- ✅ **1A. Actor ownership inventory:** App-owned actors now live in two files:
+- ✅ **1A. Actor ownership inventory:** Only one app-owned domain actor remains:
   - `RsyncUI/Model/Storage/Actors/ActorLogToFile.swift:23`
-  - `RsyncUI/Model/Storage/Actors/ActorReadLogRecords.swift:12`
+  - (`ActorReadLogRecords` was inlined into `LogStoreService.loadStore` and deleted in `c6bda5c0`. Two new actor singletons exist outside this directory: `RsyncUI/Model/Storage/SharedJSONStorageReader.swift` and `RsyncUI/Model/Storage/SharedJSONStorageWriter.swift` provide the shared JSON read/write boundary, and `GetversionofRsyncUI` was promoted to an actor singleton with a per-session cache in `c6bda5c0`.)
 - ✅ **1B. Thin actor removal:** Thin actor removals already landed:
   - `RsyncUI/Model/Output/CreateOutputforView.swift:10`
   - `RsyncUI/Model/Newversion/GetversionofRsyncUI.swift:11`
@@ -24,7 +24,7 @@ This file expands `cleanup.md` Phase 1 with a concrete inventory of the current 
   - `RsyncUI/Main/RsyncUIView.swift:52-74`
   - `RsyncUI/Views/Sidebar/extensionSidebarMainView.swift:157-179`
   - `RsyncUI/Views/Configurations/ConfigurationsTableLoadDataView.swift:61-81`
-  - `RsyncUI/Model/Utils/ReadAllTasks.swift:13-96`
+  - `RsyncUI/Model/Utils/ReadAllTasks.swift:13-82` *(now parallelized via `withTaskGroup` with indexed gathering — `c6bda5c0` / `d2e91a31`; each loop still calls `ReadSynchronizeConfigurationJSON` once per profile, so the shared profile/config-loader refactor target is unchanged)*
 - Phase 4 groundwork already exists:
   - `RsyncUI/Model/Loggdata/LogStoreService.swift:10-32`
   - `hiddenIDs`, `hiddenID(for:)`, and `backupID(for:)` are already centralized there.
@@ -36,9 +36,9 @@ This file expands `cleanup.md` Phase 1 with a concrete inventory of the current 
 | Type | Current location | What it owns today | Status | Notes |
 |---|---|---|---|---|
 | `ActorLogToFile` | `RsyncUI/Model/Storage/Actors/ActorLogToFile.swift:23-150` | Cached `Homepath`, serialized logfile append/read/reset, file-size checks, error propagation | ✅ | This is the intended serialized logfile boundary, now exposed as `ActorLogToFile.shared` with a private `init()`. All call sites (`Execute`, `Estimate`, `SshKeys`, `ObservableSchedules`, `InterruptProcess`, `LogfileView`, `CreateOutputforView`) route through the singleton, so reads and writes serialize against one actor instance. |
-| `ActorReadLogRecords` | `RsyncUI/Model/Storage/Actors/ActorReadLogRecords.swift:12-127` | Reads persisted log JSON, filters by valid IDs, merges logs, filters logs, deletes logs | ✅ | This is still present by design for Phase 1. `LogStoreService.loadStore(...)` is now the shared read boundary, and Phase 4 remains the place to move view-owned mutations behind one service API. |
+| `ActorReadLogRecords` | *(removed)* | Previously read persisted log JSON and filtered by valid IDs | ✅ | Inlined into `LogStoreService.loadStore` in `c6bda5c0`; the file was deleted. Decode is owned by `SharedJSONStorageReader.shared`; the post-decode `validHiddenIDs` filter and path construction now live directly in `LogStoreService`. |
 | `ActorCreateOutputforView` | `RsyncUI/Model/Output/CreateOutputforView.swift:10-57` | Replaced by a plain helper that maps rsync/logfile output into view models and still delegates logfile reads to `ActorLogToFile` | ✅ | The actor was removed. Remaining follow-up work is downstream task-adapter cleanup in views/models that still call the helper asynchronously. |
-| `ActorGetversionofRsyncUI` | `RsyncUI/Model/Newversion/GetversionofRsyncUI.swift:11-37` | Replaced by a plain async fetch helper that loads version JSON and exposes `getversionsofrsyncui()` / `downloadlinkofrsyncui()` | ✅ | The actor boundary is gone; `SidebarMainView` and `AboutView` now call the async helper directly. |
+| `ActorGetversionofRsyncUI` | `RsyncUI/Model/Newversion/GetversionofRsyncUI.swift:11-52` | Now an actor singleton (`GetversionofRsyncUI.shared`) with a per-session `cached: [VersionsofRsyncUI]?` field; `getversionsofrsyncui()` and `downloadlinkofrsyncui()` both consult `matchingVersions()`, which fetches once and caches on success | ✅ | `c6bda5c0` re-introduced the actor boundary deliberately to coalesce the remote JSON fetch across `SidebarMainView` and `AboutView`. Both call sites now use `.shared`. |
 
 ## 3. `Task.detached` matrix
 
@@ -68,7 +68,7 @@ These are the main-actor boundaries that most directly shape later cleanup work.
 | `ReadImportConfigurationsJSON` | `RsyncUI/Model/Storage/ExportImport/ReadImportConfigurationsJSON.swift:12-45` | Decodes import file and rewrites IDs in one object | **Convert to helper over shared storage** | Keep ID-rewrite logic, remove dedicated storage wrapper. |
 | `WriteExportConfigurationsJSON` | `RsyncUI/Model/Storage/ExportImport/WriteExportConfigurationsJSON.swift:12-62` | Encodes and writes export bundle directly on main actor | **Convert to helper over shared storage** | Shared JSON export writer should own encode/write; export service should own only export-specific decisions. |
 | `WriteWidgetsURLStringsJSON` | `RsyncUI/Model/Storage/Widgets/WriteWidgetsURLStringsJSON.swift:13-61` | Writes widget URL strings to the widget container and validates deeplinks | **Split responsibilities** | Keep deeplink validation, but move encode/write path logic into shared storage infrastructure. |
-| `ReadAllTasks` | `RsyncUI/Model/Utils/ReadAllTasks.swift:11-97` | Repeats configuration loading across every profile | **Centralize** | It should call one shared profile/config loader instead of recreating per-profile read loops. |
+| `ReadAllTasks` | `RsyncUI/Model/Utils/ReadAllTasks.swift:11-82` | Repeats configuration loading across every profile (now in parallel) | **Centralize** | `c6bda5c0` / `d2e91a31` parallelized both loops via `withTaskGroup` with indexed gathering that preserves input profile order. The remaining target is still a shared profile/config loader so the per-profile read isn't reconstructed in two places. |
 | `UpdateConfigurations` | `RsyncUI/Model/Storage/Basic/UpdateConfigurations.swift:10-172` | Mutates configurations in memory and persists them immediately | **Keep temporarily, then shrink** | Once writes are centralized, this should become an in-memory mutation helper or a service method, not a persistence owner. |
 | `Logging` | `RsyncUI/Model/Loggdata/Logging.swift:16-170` | Mixes config date stamping, log formatting, log insertion, snapshot numbering, and persistence | **Centralize behind log-data service** | This is a major later refactor target because it still owns both domain logic and persistence side effects. |
 
@@ -83,13 +83,13 @@ Both models are `@MainActor Codable`, which means Phase 2 must review whether th
 
 | Responsibility | Entry point | Current callers that reveal duplication | Refactor target |
 |---|---|---|---|
-| Read task configurations | `ReadSynchronizeConfigurationJSON.readjsonfilesynchronizeconfigurations` | `RsyncUIView.swift:71-73`, `extensionSidebarMainView.swift:170-172`, `ConfigurationsTableLoadDataView.swift:66-79`, `ReadAllTasks.swift:21-24` and `80-82` | One shared profile/config loader used by startup, profile switching, and cross-profile scans |
+| Read task configurations | `ReadSynchronizeConfigurationJSON.readjsonfilesynchronizeconfigurations` | `RsyncUIView.swift:71-73`, `extensionSidebarMainView.swift:170-172`, `ConfigurationsTableLoadDataView.swift:66-79`, `ReadAllTasks.swift:22` and `62` (both inside `withTaskGroup` child tasks) | One shared profile/config loader used by startup, profile switching, and cross-profile scans |
 | Write task configurations | `WriteSynchronizeConfigurationJSON.write` | `Logging.swift`, `UpdateConfigurations.swift`, `ConfigurationsTableDataMainView.swift` | Shared async storage writer with explicit await |
 | Read user configuration | `ReadUserConfigurationJSON.readuserconfiguration` | `RsyncUIView.swift:40-51` | ✅ Done — load and apply are now separate steps; the read helper calls `UserConfiguration(_ data:).setuserconfigdata()` explicitly. |
 | Write user configuration | `WriteUserConfigurationJSON.init` | `Environmentsettings.swift:16`, `Logsettings.swift:20`, `RsyncandPathsettings.swift:16`, `Sshsettings.swift:18` | Shared settings persistence helper |
 | Read schedules | `ReadSchedule.readjsonfilecalendar` | `SidebarMainView.swift:117-120` | Shared schedule repository / loader |
 | Write schedules | `WriteSchedule.init` | `AddSchedule.swift:88`, `CalendarMonthView.swift:77` | Shared schedule repository / writer |
-| Read log store | `ActorReadLogRecords.readjsonfilelogrecords` via `LogStoreService.loadStore` | `Logging.swift:27-30`, `LogRecordsTabView.swift:156-160` and `183-187`, `SnapshotsView.swift:217-223` | One log-data service actor / repository |
+| Read log store | `LogStoreService.loadStore` (inlined path/decode/filter — no longer wraps an actor since `c6bda5c0`; decode is owned by `SharedJSONStorageReader.shared`) | `Logging.swift:27-30`, `LogRecordsTabView.swift:156-160` and `183-187`, `SnapshotsView.swift:217-223` | One log-data service / repository |
 | Write log store | `WriteLogRecordsJSON.write` | `Logging.swift`, `LogRecordsTabView.swift`, `SnapshotsView.swift` | Same log-data service actor / repository |
 | Import configurations | `ReadImportConfigurationsJSON.init` | `ImportView.swift:125` | Import service over shared JSON storage |
 | Export configurations | `WriteExportConfigurationsJSON.init` | `ExportView.swift:72` | Export service over shared JSON storage |
@@ -154,8 +154,8 @@ These are the safety rails for later phases. If any of these are removed too ear
    - `RsyncUI/Model/Process/InterruptProcess.swift:8-19`
 
 3. **Log-data read/write serialization**
-   - `RsyncUI/Model/Storage/Actors/ActorLogToFile.swift`
-   - `RsyncUI/Model/Storage/Actors/ActorReadLogRecords.swift`
+   - `RsyncUI/Model/Storage/Actors/ActorLogToFile.swift` (singleton)
+   - `RsyncUI/Model/Loggdata/LogStoreService.swift` (read path; was `ActorReadLogRecords` until `c6bda5c0`)
    - `RsyncUI/Model/Storage/WriteLogRecordsJSON.swift`
    - `RsyncUI/Model/Loggdata/Logging.swift`
 

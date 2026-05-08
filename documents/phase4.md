@@ -330,9 +330,9 @@ That keeps actor isolation around persistence and shared store access, while mov
 
 ## 5. Practical cleanup order
 
-1. 🟡 Partial - Extract the shared log-result parser from `Logging` and `ActorReadLogRecords`.
+1. 🟡 Partial - Extract the shared log-result parser from `Logging` and `LogChartService` (regex parsing is still duplicated; the read-side actor was deleted in `c6bda5c0`, so the historical second copy is now folded into `LogStoreService`).
 2. ✅ Extract configuration helpers for `hiddenIDs` and `selected hiddenID`.
-3. 🟡 Partial - Create a store-oriented service that wraps `readjsonfilelogrecords` and `WriteLogRecordsJSON`.
+3. 🟡 Partial - Create a store-oriented service that wraps the JSON read (now inlined in `LogStoreService.loadStore` via `SharedJSONStorageReader.shared`) and `WriteLogRecordsJSON`.
 4. 🟡 Partial - Move `LogRecordsTabView` to the service first; it has the simplest read/filter/delete path.
 5. ✅ Move chart preparation next by replacing `ObservableChartData` + `LogStatsChartView.readAndSortLogData()` with one service call.
 6. ❌ Not done - Move snapshot merge/delete flow last, because it combines local logs with remote catalog discovery.
@@ -345,7 +345,7 @@ That keeps actor isolation around persistence and shared store access, while mov
 - ✅ There is only one place that reads log JSON from disk.
 - ❌ Not done - There is only one place that writes log JSON to disk.
 - ❌ Not done - There is only one parser for `resultExecuted`.
-- ❌ Not done - No SwiftUI view directly calls `ActorReadLogRecords`.
+- ✅ No SwiftUI view directly calls `ActorReadLogRecords` — the actor was deleted in `c6bda5c0` and views go through `LogStoreService`.
 - ✅ `ObservableChartData` is either removed or reduced to plain UI state.
 - ❌ Not done - `SnapshotsView` no longer stores raw `readlogrecordsfromfile` just to support delete.
 - ✅ `validhiddenIDs` is not reimplemented in view files.

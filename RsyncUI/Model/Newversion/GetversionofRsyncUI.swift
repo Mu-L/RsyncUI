@@ -5,10 +5,19 @@
 //  Created by Thomas Evensen on 02/07/2025.
 //
 
+import Foundation
 import OSLog
 
-struct GetversionofRsyncUI {
-    private func fetchMatchingVersions() async throws -> [VersionsofRsyncUI] {
+actor GetversionofRsyncUI {
+    static let shared = GetversionofRsyncUI()
+
+    private var cached: [VersionsofRsyncUI]?
+
+    private init() {}
+
+    private func matchingVersions() async throws -> [VersionsofRsyncUI] {
+        if let cached { return cached }
+
         guard let resourceURL = URL(string: Resources().getResource(resource: .urlJSON)) else {
             throw URLError(.badURL)
         }
@@ -19,12 +28,14 @@ struct GetversionofRsyncUI {
         )
         Logger.process.debugThreadOnly("GetversionofRsyncUI: \(all)")
         let runningversion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-        return all.filter { runningversion.isEmpty ? true : $0.version == runningversion }
+        let filtered = all.filter { runningversion.isEmpty ? true : $0.version == runningversion }
+        cached = filtered
+        return filtered
     }
 
     func getversionsofrsyncui() async -> Bool {
         do {
-            return try await fetchMatchingVersions().isEmpty == false
+            return try await matchingVersions().isEmpty == false
         } catch {
             Logger.process.warning("GetversionofRsyncUI: loading data failed)")
             return false
@@ -33,7 +44,7 @@ struct GetversionofRsyncUI {
 
     func downloadlinkofrsyncui() async -> String? {
         do {
-            return try await fetchMatchingVersions().first?.url
+            return try await matchingVersions().first?.url
         } catch {
             Logger.process.warning("GetversionofRsyncUI: loading data failed)")
             return nil

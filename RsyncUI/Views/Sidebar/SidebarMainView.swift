@@ -161,7 +161,7 @@ struct SidebarMainView: View {
     }
 
     func loadData() async -> (version: Bool, scheduledata: [SchedulesConfigurations]) {
-        async let version = GetversionofRsyncUI().getversionsofrsyncui()
+        async let version = GetversionofRsyncUI.shared.getversionsofrsyncui()
         async let scheduledata = ReadSchedule()
             .readjsonfilecalendar(rsyncUIdata.validprofiles.map(\.profilename)) ?? []
 

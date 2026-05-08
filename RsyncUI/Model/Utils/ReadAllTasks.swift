@@ -11,87 +11,72 @@ import OSLog
 @MainActor
 struct ReadAllTasks {
     func readAllMarkedTasks(_ validprofiles: [ProfilesnamesRecord]) async -> [SynchronizeConfiguration] {
-        var old: [SynchronizeConfiguration]?
         let allprofiles = validprofiles.map(\.profilename)
         let rsyncversion3 = SharedReference.shared.rsyncversion3
+        let markdays = SharedReference.shared.marknumberofdayssince
 
-        for profileIndex in 0 ..< allprofiles.count {
-            let profilename = allprofiles[profileIndex]
-
-            let configurations = await ReadSynchronizeConfigurationJSON()
-                .readjsonfilesynchronizeconfigurations(profilename,
-                                                       rsyncversion3)
-
-            let profileold = configurations?.filter { element in
-                var seconds: Double {
-                    if let date = element.dateRun {
-                        let lastbackup = date.en_date_from_string()
-                        return lastbackup.timeIntervalSinceNow * -1
-                    } else {
-                        return 0
-                    }
-                }
-                return markConfig(seconds) == true
-            }
-
-            if old == nil, let profileold {
-                old = profileold.map { element in
-                    var newelement = element
-                    if newelement.backupID.isEmpty {
-                        newelement.backupID = "No ID set"
-                    }
-                    newelement.backupID += " : " + profilename
-                    return newelement
-                }
-            } else {
-                if let profileold {
-                    let profileold = profileold.map { element in
-                        var newelement = element
-                        if newelement.backupID.isEmpty {
-                            newelement.backupID = "No ID set"
+        let perProfile: [(Int, [SynchronizeConfiguration])] =
+            await withTaskGroup(of: (Int, [SynchronizeConfiguration]).self) { group in
+                for (index, profilename) in allprofiles.enumerated() {
+                    group.addTask {
+                        let configurations = await ReadSynchronizeConfigurationJSON()
+                            .readjsonfilesynchronizeconfigurations(profilename, rsyncversion3)
+                        let marked = (configurations ?? []).filter { element in
+                            guard let date = element.dateRun else { return false }
+                            let seconds = date.en_date_from_string().timeIntervalSinceNow * -1
+                            return seconds / (60 * 60 * 24) > Double(markdays)
                         }
-                        newelement.backupID += " : " + profilename
-                        return newelement
+                        let tagged = marked.map { element -> SynchronizeConfiguration in
+                            var newelement = element
+                            if newelement.backupID.isEmpty {
+                                newelement.backupID = "No ID set"
+                            }
+                            newelement.backupID += " : " + profilename
+                            return newelement
+                        }
+                        return (index, tagged)
                     }
-                    old?.append(contentsOf: profileold)
                 }
+                var collected: [(Int, [SynchronizeConfiguration])] = []
+                for await result in group {
+                    collected.append(result)
+                }
+                return collected
             }
-        }
 
-        if old?.count == 0 {
-            return []
-        } else {
-            return old ?? []
-        }
-    }
-
-    private func markConfig(_ seconds: Double) -> Bool {
-        seconds / (60 * 60 * 24) > Double(SharedReference.shared.marknumberofdayssince)
+        return perProfile
+            .sorted { $0.0 < $1.0 }
+            .flatMap(\.1)
     }
 
     /// Put profilename in Backup ID
     func readalltasks(_ validprofiles: [ProfilesnamesRecord]) async -> [SynchronizeConfiguration] {
-        var allconfigurations: [SynchronizeConfiguration] = []
         let allprofiles = validprofiles.map(\.profilename)
+        let rsyncversion3 = SharedReference.shared.rsyncversion3
 
-        for profileIndex in 0 ..< allprofiles.count {
-            let profilename = allprofiles[profileIndex]
-
-            let configurations = await ReadSynchronizeConfigurationJSON()
-                .readjsonfilesynchronizeconfigurations(profilename,
-                                                       SharedReference.shared.rsyncversion3)
-
-            let adjustedconfigurations = configurations?.map { element in
-                var newelement = element
-                newelement.backupID = profilename
-                return newelement
+        let perProfile: [(Int, [SynchronizeConfiguration])] =
+            await withTaskGroup(of: (Int, [SynchronizeConfiguration]).self) { group in
+                for (index, profilename) in allprofiles.enumerated() {
+                    group.addTask {
+                        let configurations = await ReadSynchronizeConfigurationJSON()
+                            .readjsonfilesynchronizeconfigurations(profilename, rsyncversion3)
+                        let adjusted = (configurations ?? []).map { element -> SynchronizeConfiguration in
+                            var newelement = element
+                            newelement.backupID = profilename
+                            return newelement
+                        }
+                        return (index, adjusted)
+                    }
+                }
+                var collected: [(Int, [SynchronizeConfiguration])] = []
+                for await result in group {
+                    collected.append(result)
+                }
+                return collected
             }
 
-            if let adjustedconfigurations {
-                allconfigurations.append(contentsOf: adjustedconfigurations)
-            }
-        }
-
-        return allconfigurations
+        return perProfile
+            .sorted { $0.0 < $1.0 }
+            .flatMap(\.1)
     }
 }
