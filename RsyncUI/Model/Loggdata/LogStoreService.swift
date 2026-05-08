@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import OSLog
 
 typealias LogStore = [LogRecords]
 
@@ -13,7 +14,32 @@ enum LogStoreService {
         configurations: [SynchronizeConfiguration]?
     ) async -> LogStore {
         let validHiddenIDs = configurations?.hiddenIDs ?? []
-        return await ActorReadLogRecords().readjsonfilelogrecords(profile, validHiddenIDs) ?? []
+        let path = await Homepath()
+        guard let fullpathmacserial = path.fullpathmacserial else { return [] }
+
+        let baseURL = URL(fileURLWithPath: fullpathmacserial)
+        let fileURL: URL = if let profile {
+            baseURL.appendingPathComponent(profile)
+                .appendingPathComponent(SharedConstants().filenamelogrecordsjson)
+        } else {
+            baseURL.appendingPathComponent(SharedConstants().filenamelogrecordsjson)
+        }
+
+        do {
+            let data = try await SharedJSONStorageReader.shared.decodeArray(
+                DecodeLogRecords.self,
+                from: fileURL
+            )
+            return data.compactMap { element in
+                let item = LogRecords(element)
+                return validHiddenIDs.contains(item.hiddenID) ? item : nil
+            }
+        } catch {
+            Logger.process.errorMessageOnly(
+                "LogStoreService.loadStore - \(profile ?? "default profile"): error reading logrecords"
+            )
+            return []
+        }
     }
 
     static func visibleLogs(
