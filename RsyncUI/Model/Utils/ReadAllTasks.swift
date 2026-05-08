@@ -46,7 +46,7 @@ struct ReadAllTasks {
 
         return perProfile
             .sorted { $0.0 < $1.0 }
-            .flatMap { $0.1 }
+            .flatMap(\.1)
     }
 
     /// Put profilename in Backup ID
@@ -77,6 +77,6 @@ struct ReadAllTasks {
 
         return perProfile
             .sorted { $0.0 < $1.0 }
-            .flatMap { $0.1 }
+            .flatMap(\.1)
     }
 }
