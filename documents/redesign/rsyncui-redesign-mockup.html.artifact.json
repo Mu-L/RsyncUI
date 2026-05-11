@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "RsyncUI — Redesign Mockup",
+  "entry": "rsyncui-redesign-mockup.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-05-11T06:10:51.726Z",
+  "updatedAt": "2026-05-11T06:10:51.737Z",
+  "metadata": {
+    "identifier": "rsyncui-redesign-mockup",
+    "artifactType": "text/html",
+    "inferred": false
+  }
+}
