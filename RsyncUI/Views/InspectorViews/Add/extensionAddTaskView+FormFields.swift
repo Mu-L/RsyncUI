@@ -11,7 +11,7 @@ import SwiftUI
 
 extension AddTaskView {
     var synchronizeID: some View {
-        Section(header: Text("Synchronize ID").modifier(FixedTag(200, .leading)).font(.title3).fontWeight(.bold)) {
+        Section(header: AddTaskSectionHeader(title: "Synchronize ID")) {
             if newdata.selectedconfig == nil {
                 EditValueScheme(400, "Add synchronize ID", $newdata.backupID)
                     .focused($focusField, equals: .synchronizeIDField)
@@ -36,7 +36,7 @@ extension AddTaskView {
     }
 
     var localandremotecatalog: some View {
-        Section(header: Text("Folder parameters").modifier(FixedTag(200, .leading)).font(.title3).fontWeight(.bold)) {
+        Section(header: AddTaskSectionHeader(title: "Folders")) {
             catalogField(catalog: $newdata.localcatalog,
                          placeholder: "Add Source folder - required",
                          focus: .localcatalogField,
@@ -51,7 +51,7 @@ extension AddTaskView {
     }
 
     var localandremotecatalogsyncremote: some View {
-        Section(header: Text("Folder parameters").modifier(FixedTag(200, .leading)).font(.title3).fontWeight(.bold)) {
+        Section(header: AddTaskSectionHeader(title: "Folders")) {
             catalogField(catalog: $newdata.remotecatalog,
                          placeholder: "Add Source folder - required",
                          focus: .remotecatalogField,
@@ -86,7 +86,7 @@ extension AddTaskView {
     }
 
     var remoteuserandserver: some View {
-        Section(header: Text("Remote parameters").modifier(FixedTag(200, .leading)).font(.title3).fontWeight(.bold)) {
+        Section(header: AddTaskSectionHeader(title: "Remote")) {
             remoteField(
                 value: $newdata.remoteuser,
                 placeholder: "Add remote user",

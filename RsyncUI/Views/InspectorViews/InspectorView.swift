@@ -35,50 +35,26 @@ struct InspectorView: View {
                     .font(.title2)
             }
         } else {
-            // Tab-specific inspector views on the right
-            TabView(selection: $selectedTab) {
-                AddTaskView(rsyncUIdata: rsyncUIdata,
-                            selectedTab: $selectedTab,
-                            selecteduuids: $selecteduuids,
-                            showAddPopover: $showAddPopover)
-                    .tabItem {
-                        Label("Edit", systemImage: "plus.circle")
-                    }
-                    .tag(InspectorTab.edit)
-                    .id(InspectorTab.edit)
+            VStack(spacing: 0) {
+                Picker("Inspector Tab", selection: $selectedTab) {
+                    Text("Edit").tag(InspectorTab.edit)
+                    Text("Parameters").tag(InspectorTab.parameters)
+                    Text("Logs").tag(InspectorTab.logview)
+                    Text("Verify").tag(InspectorTab.verifytask)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
 
-                RsyncParametersView(rsyncUIdata: rsyncUIdata,
-                                    selectedTab: $selectedTab,
-                                    selecteduuids: $selecteduuids)
-                    .tabItem {
-                        Label("Parameters", systemImage: "slider.horizontal.3")
-                    }
-                    .tag(InspectorTab.parameters)
-                    .id(InspectorTab.parameters)
+                Divider()
 
-                LogRecordsTabView(
+                InspectorContentView(
                     rsyncUIdata: rsyncUIdata,
                     selectedTab: $selectedTab,
-                    selecteduuids: $selecteduuids
+                    selecteduuids: $selecteduuids,
+                    showAddPopover: $showAddPopover
                 )
-                .tabItem {
-                    Label("Log Records", systemImage: "slider.horizontal.3")
-                }
-                .tag(InspectorTab.logview)
-                .id(InspectorTab.logview)
-
-                VerifyTaskTabView(
-                    rsyncUIdata: rsyncUIdata,
-                    selectedTab: $selectedTab,
-                    selecteduuids: $selecteduuids
-                )
-                .tabItem {
-                    Label("Verify Task", systemImage: "slider.horizontal.3")
-                }
-                .tag(InspectorTab.verifytask)
-                .id(InspectorTab.verifytask)
             }
-            .padding()
             .navigationTitle("")
             .inspectorColumnWidth(min: 550, ideal: 600, max: 650)
         }

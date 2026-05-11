@@ -47,14 +47,14 @@ struct EditTabView: View {
                           showAddPopover: $showAddPopover)
         }
         .toolbar(content: {
-            ToolbarItem(placement: .navigation) {
+            ToolbarItem(placement: .automatic) {
                 Button {
                     showAddPopover.toggle()
                 } label: {
-                    Label("Quick add task", systemImage: "plus")
-                        .labelStyle(.iconOnly)
+                    Label("Add Task", systemImage: "plus")
+                        .labelStyle(.titleAndIcon)
                 }
-                .help("Quick add task")
+                .help("Add new task")
             }
         })
     }
