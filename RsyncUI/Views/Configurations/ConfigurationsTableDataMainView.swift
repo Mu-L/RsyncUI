@@ -23,7 +23,7 @@ struct ConfigurationsTableDataMainView: View {
             TableColumn("") { data in
                 if data.hiddenID == progressdetails.hiddenIDatwork, max > 0, progress <= max {
                     ProgressView(value: progress, total: max)
-                        .frame(width: 20)
+                        .frame(width: 30)
                         .scaleEffect(y: 1.5, anchor: .center)
                 } else {
                     Circle()
@@ -37,11 +37,7 @@ struct ConfigurationsTableDataMainView: View {
                 HStack(spacing: 4) {
                     synchronizeIDText(for: data)
 
-                    if data.task == SharedReference.shared.snapshot {
-                        taskBadge("snapshot", color: .orange)
-                    } else if data.task == SharedReference.shared.syncremote {
-                        taskBadge("syncremote", color: .blue)
-                    }
+                    ConfigurationTaskBadge(task: data.task)
                 }
                 .opacity(opacity(for: data))
                 .contextMenu {
@@ -152,16 +148,6 @@ struct ConfigurationsTableDataMainView: View {
         }
     }
 
-    private func taskBadge(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.caption2)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 1)
-            .background(color.opacity(0.15))
-            .foregroundStyle(color)
-            .clipShape(RoundedRectangle(cornerRadius: 3))
-    }
-
     private func statusColor(for data: SynchronizeConfiguration) -> Color {
         if data.task == SharedReference.shared.halted {
             return .gray
@@ -234,6 +220,45 @@ struct ConfigurationsTableDataMainView: View {
                 await WriteSynchronizeConfigurationJSON.write(profile, configurations)
                 selecteduuids.removeAll()
             }
+        }
+    }
+}
+
+@MainActor
+struct ConfigurationTaskBadge: View {
+    let task: String
+
+    var body: some View {
+        if task == SharedReference.shared.halted {
+            Label("halted", systemImage: "stop.fill")
+                .font(.caption2)
+                .labelStyle(.titleAndIcon)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .background(Color.red.opacity(0.15))
+                .foregroundStyle(.red)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+        } else if task.isEmpty == false {
+            Text(task)
+                .font(.caption2)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .background(color.opacity(0.15))
+                .foregroundStyle(color)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+        }
+    }
+
+    private var color: Color {
+        switch task {
+        case SharedReference.shared.synchronize:
+            .green
+        case SharedReference.shared.snapshot:
+            .orange
+        case SharedReference.shared.syncremote:
+            .blue
+        default:
+            .secondary
         }
     }
 }
