@@ -8,8 +8,6 @@
 import SwiftUI
 
 struct ConfigurationsTableDataMainView: View {
-    @Environment(\.colorScheme) var colorScheme
-
     @Bindable var rsyncUIdata: RsyncUIconfigurations
     @Binding var selecteduuids: Set<SynchronizeConfiguration.ID>
     @Binding var filterstring: String
@@ -22,150 +20,108 @@ struct ConfigurationsTableDataMainView: View {
         Table(configurations.filter {
             filterstring.isEmpty ? true : $0.backupID.contains(filterstring)
         }, selection: $selecteduuids) {
-            TableColumn("%") { data in
+            TableColumn("") { data in
                 if data.hiddenID == progressdetails.hiddenIDatwork, max > 0, progress <= max {
-                    HStack(spacing: 8) {
-                        // Progress bar with percentage overlay
-                        ZStack(alignment: .leading) {
-                            ProgressView(value: progress, total: max)
-                                .frame(width: 80)
-                                .scaleEffect(y: 1.5, anchor: .center)
-
-                            Text("\(Int((progress / max) * 100))%")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .padding(.vertical, 4)
+                    ProgressView(value: progress, total: max)
+                        .frame(width: 20)
+                        .scaleEffect(y: 1.5, anchor: .center)
+                } else {
+                    Circle()
+                        .fill(statusColor(for: data))
+                        .frame(width: 8, height: 8)
                 }
             }
-            .width(min: 100, max: 150)
-            .defaultVisibility(visibleProgress)
-
-            TableColumn("Num") { data in
-                if data.hiddenID == progressdetails.hiddenIDatwork, max > 0, progress <= max {
-                    HStack(spacing: 8) {
-                        // Compact ratio display
-                        HStack(spacing: 4) {
-                            Text("\(Int(progress))")
-                                .contentTransition(.numericText(countsDown: false))
-                                .animation(.default, value: progress)
-
-                            Text("/")
-                                .foregroundStyle(.secondary)
-
-                            Text("\(Int(max))")
-                                .foregroundStyle(.secondary)
-                        }
-                        .font(.system(.body, design: .monospaced))
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-            .width(min: 150, max: 250)
-            .defaultVisibility(visibleProgress)
+            .width(min: 30, max: 36)
 
             TableColumn("Synchronize ID") { data in
-                if let index = progressdetails.estimatedlist?.firstIndex(where: { $0.id == data.id }) {
-                    if progressdetails.estimatedlist?[index].datatosynchronize == false,
-                       progressdetails.estimatedlist?[index].preparedoutputfromrsync?.count ?? 0 >
-                       SharedReference.shared.alerttagginglines {
-                        // If tagging is kind of suspicious and need attention
+                HStack(spacing: 4) {
+                    synchronizeIDText(for: data)
 
-                        if data.backupID.isEmpty == true {
-                            Text("No ID set")
-                                .foregroundStyle(.yellow)
-                        } else {
-                            Text(data.backupID)
-                                .foregroundStyle(.yellow)
-                        }
-
-                        Text(rsyncUIdata.profile ?? "Default")
-                            .foregroundStyle(.yellow)
-                    } else {
-                        let color: Color = progressdetails.estimatedlist?[index].datatosynchronize == true ? .blue : .red
-                        if data.backupID.isEmpty == true {
-                            Text("No ID set")
-                                .foregroundStyle(color)
-                        } else {
-                            Text(data.backupID)
-                                .foregroundStyle(color)
-                        }
+                    if data.task == SharedReference.shared.snapshot {
+                        taskBadge("snapshot", color: .orange)
+                    } else if data.task == SharedReference.shared.syncremote {
+                        taskBadge("syncremote", color: .blue)
                     }
-                } else {
-                    if data.backupID.isEmpty == true {
-                        Text("No ID set")
-                    } else {
-                        Text(data.backupID)
+                }
+                .opacity(opacity(for: data))
+                .contextMenu {
+                    ConditionalGlassButton(
+                        systemImage: "stop.fill",
+                        text: "Toggle halt task",
+                        helpText: data.task == SharedReference.shared.halted ? "Enable task" : "Halt task"
+                    ) {
+                        if let index = getIndex(data.id) {
+                            updateHalted(index)
+                        }
                     }
                 }
             }
-            .width(min: 50, max: 150)
-            TableColumn("Action") { data in
-                if data.task == SharedReference.shared.halted {
-                    Image(systemName: "stop.fill")
-                        .foregroundStyle(Color(.red))
-                        .contextMenu {
-                            ConditionalGlassButton(
-                                systemImage: "stop.fill",
-                                text: "Toggle halt task",
-                                helpText: "Enable task"
-                            ) {
-                                if let index = getIndex(selecteduuids) {
-                                    updateHalted(index)
-                                }
-                            }
-                        }
-                } else {
-                    Text(data.task)
-                        .contextMenu {
-                            ConditionalGlassButton(
-                                systemImage: "stop.fill",
-                                text: "Toggle halt task",
-                                helpText: "Halt task"
-                            ) {
-                                if let index = getIndex(selecteduuids) {
-                                    updateHalted(index)
-                                }
-                            }
-                        }
-                }
+            .width(min: 80, max: 200)
+
+            TableColumn("Source") { data in
+                Text(data.localCatalog)
+                    .opacity(opacity(for: data))
             }
-            .width(max: 80)
-            TableColumn("Source folder", value: \.localCatalog)
-                .width(min: 120, max: 300)
-            TableColumn("Destination folder", value: \.offsiteCatalog)
-                .width(min: 120, max: 300)
+            .width(min: 120, max: 300)
+
+            TableColumn("Destination") { data in
+                Text(data.offsiteCatalog)
+                    .opacity(opacity(for: data))
+            }
+            .width(min: 120, max: 300)
+
             TableColumn("Server") { data in
-                if data.offsiteServer.count > 0 {
-                    Text(data.offsiteServer)
-                } else {
-                    Text("localhost")
-                }
-            }
-            .width(min: 50, max: 90)
-            TableColumn("Time last") { data in
-                var seconds: Double {
-                    if let date = data.dateRun {
-                        let lastbackup = date.en_date_from_string()
-                        return lastbackup.timeIntervalSinceNow * -1
+                Group {
+                    if data.offsiteServer.count > 0 {
+                        Text(data.offsiteServer)
                     } else {
-                        return 0
+                        Text("localhost")
                     }
                 }
-                let color: Color = markConfig(seconds) == true ? .red : (colorScheme == .dark ? .white : .black)
-
-                Text(seconds.latest())
-                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .trailing)
-                    .foregroundStyle(color)
+                .opacity(opacity(for: data))
             }
-            .width(max: 90)
+            .width(min: 50, max: 100)
 
-            TableColumn("Date last") { data in
-                Text(data.dateRun ?? "")
+            TableColumn("Last Sync") { data in
+                if data.hiddenID == progressdetails.hiddenIDatwork, max > 0, progress <= max {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(Int((progress / max) * 100))%")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.blue)
+                            .contentTransition(.numericText(countsDown: false))
+                            .animation(.default, value: progress)
+                        Text("syncing...")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                } else if data.task == SharedReference.shared.halted {
+                    Text("halted")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                } else if let dateRun = data.dateRun {
+                    let lastbackup = dateRun.en_date_from_string()
+                    let seconds = lastbackup.timeIntervalSinceNow * -1
+                    let isStale = markConfig(seconds)
+
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(seconds.latest())
+                            .font(.caption)
+                            .foregroundStyle(isStale ? .red : .primary)
+                        Text(dateRun)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                } else {
+                    Text("never")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
             }
-            .width(max: 120)
+            .width(min: 80, max: 130)
         }
     }
 
@@ -173,21 +129,65 @@ struct ConfigurationsTableDataMainView: View {
         rsyncUIdata.configurations ?? []
     }
 
-    var visibleProgress: Visibility {
-        if max == 0 {
-            .hidden
+    @ViewBuilder
+    private func synchronizeIDText(for data: SynchronizeConfiguration) -> some View {
+        if let index = progressdetails.estimatedlist?.firstIndex(where: { $0.id == data.id }) {
+            if progressdetails.estimatedlist?[index].datatosynchronize == false,
+               progressdetails.estimatedlist?[index].preparedoutputfromrsync?.count ?? 0 >
+               SharedReference.shared.alerttagginglines {
+                // If tagging is kind of suspicious and need attention
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(data.backupID.isEmpty ? "No ID set" : data.backupID)
+                    Text(rsyncUIdata.profile ?? "Default")
+                        .font(.caption2)
+                }
+                .foregroundStyle(.yellow)
+            } else {
+                let color: Color = progressdetails.estimatedlist?[index].datatosynchronize == true ? .blue : .red
+                Text(data.backupID.isEmpty ? "No ID set" : data.backupID)
+                    .foregroundStyle(color)
+            }
         } else {
-            .visible
+            Text(data.backupID.isEmpty ? "No ID set" : data.backupID)
         }
+    }
+
+    private func taskBadge(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption2)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(color.opacity(0.15))
+            .foregroundStyle(color)
+            .clipShape(RoundedRectangle(cornerRadius: 3))
+    }
+
+    private func statusColor(for data: SynchronizeConfiguration) -> Color {
+        if data.task == SharedReference.shared.halted {
+            return .gray
+        }
+        guard let dateRun = data.dateRun else {
+            return .orange
+        }
+        let lastbackup = dateRun.en_date_from_string()
+        let daysSince = lastbackup.timeIntervalSinceNow * -1 / (60 * 60 * 24)
+        if daysSince > Double(SharedReference.shared.marknumberofdayssince) {
+            return .orange
+        }
+        return .green
+    }
+
+    private func opacity(for data: SynchronizeConfiguration) -> Double {
+        data.task == SharedReference.shared.halted ? 0.4 : 1
     }
 
     private func markConfig(_ seconds: Double) -> Bool {
         seconds / (60 * 60 * 24) > Double(SharedReference.shared.marknumberofdayssince)
     }
 
-    private func getIndex(_: Set<UUID>) -> Int? {
+    private func getIndex(_ id: SynchronizeConfiguration.ID) -> Int? {
         if let configurations = rsyncUIdata.configurations {
-            if let index = configurations.firstIndex(where: { $0.id == selecteduuids.first }) {
+            if let index = configurations.firstIndex(where: { $0.id == id }) {
                 return index
             }
         }

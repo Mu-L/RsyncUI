@@ -57,10 +57,13 @@ struct SidebarMainView: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            // Only show profile picker if there are other profiles
-            // Id default only, do not show profile picker
+            VStack(alignment: .leading, spacing: 4) {
+                Text("PROFILE")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 4)
 
-            if rsyncUIdata.validprofiles.isEmpty == false, selectedview != .profiles {
                 Picker("", selection: $selectedprofileID) {
                     Text("Default")
                         .tag(nil as ProfilesnamesRecord.ID?)
@@ -70,18 +73,39 @@ struct SidebarMainView: View {
                     }
                 }
                 .frame(width: 180)
-                .padding([.bottom, .top, .trailing], 7)
                 .disabled(disablesidebarmeny)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
 
             Divider()
 
-            List(menuitems, selection: $selectedview) { item in
-                NavigationLinkWithHover(item: item, selectedview: $selectedview)
+            List(selection: $selectedview) {
+                Section("Actions") {
+                    ForEach(actionItems) { item in
+                        NavigationLinkWithHover(item: item,
+                                                selectedview: $selectedview,
+                                                badgeCount: badgeCount(for: item.menuitem))
+                    }
+                }
 
-                if item.menuitem == .tasks ||
-                    item.menuitem == .snapshots ||
-                    item.menuitem == .restore { Divider() }
+                if toolItems.isEmpty == false {
+                    Section("Tools") {
+                        ForEach(toolItems) { item in
+                            NavigationLinkWithHover(item: item,
+                                                    selectedview: $selectedview,
+                                                    badgeCount: badgeCount(for: item.menuitem))
+                        }
+                    }
+                }
+
+                Section("Management") {
+                    ForEach(managementItems) { item in
+                        NavigationLinkWithHover(item: item,
+                                                selectedview: $selectedview,
+                                                badgeCount: badgeCount(for: item.menuitem))
+                    }
+                }
             }
             .listStyle(.sidebar)
             .disabled(disablesidebarmeny)
@@ -202,6 +226,18 @@ struct SidebarMainView: View {
             SharedReference.shared.process != nil
     }
 
+    var actionItems: [MenuItem] {
+        menuitems.filter { $0.menuitem == .synchronize || $0.menuitem == .tasks }
+    }
+
+    var toolItems: [MenuItem] {
+        menuitems.filter { $0.menuitem == .snapshots || $0.menuitem == .restore }
+    }
+
+    var managementItems: [MenuItem] {
+        menuitems.filter { $0.menuitem == .profiles }
+    }
+
     /// The Sidebar meny is context sensitive. There are three Sidebar meny options
     /// which are context sensitive:
     /// - Snapshots
@@ -228,14 +264,31 @@ struct SidebarMainView: View {
             return MenuItem(menuitem: item)
         }
     }
+
+    private func badgeCount(for item: Sidebaritems) -> Int {
+        guard item == .synchronize else { return 0 }
+        return configurationsNeedingSyncCount
+    }
+
+    private var configurationsNeedingSyncCount: Int {
+        (rsyncUIdata.configurations ?? []).filter { config in
+            guard config.task != SharedReference.shared.halted else { return false }
+            guard let dateRun = config.dateRun else { return true }
+            let lastRun = dateRun.en_date_from_string()
+            let daysSince = lastRun.timeIntervalSinceNow * -1 / (60 * 60 * 24)
+            return daysSince > Double(SharedReference.shared.marknumberofdayssince)
+        }.count
+    }
 }
 
 struct SidebarRow: View {
     var sidebaritem: Sidebaritems
+    var badgeCount: Int = 0
 
     var body: some View {
         Label(sidebaritem.rawValue.localizedCapitalized.replacingOccurrences(of: "_", with: " "),
               systemImage: systemImage(sidebaritem))
+            .badge(badgeCount > 0 ? badgeCount : 0)
     }
 
     func systemImage(_ view: Sidebaritems) -> String {
@@ -257,11 +310,12 @@ struct SidebarRow: View {
 struct NavigationLinkWithHover: View {
     let item: MenuItem // Replace with your actual item type
     @Binding var selectedview: Sidebaritems // Replace with your selection type
+    var badgeCount: Int = 0
     @State private var isHovered = false
 
     var body: some View {
         NavigationLink(value: item.menuitem) {
-            SidebarRow(sidebaritem: item.menuitem)
+            SidebarRow(sidebaritem: item.menuitem, badgeCount: badgeCount)
         }
         .listRowBackground(
             RoundedRectangle(cornerRadius: 10)

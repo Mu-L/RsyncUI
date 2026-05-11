@@ -44,11 +44,7 @@ extension TasksView {
             }
         }
 
-        ToolbarItem {
-            Spacer()
-        }
-
-        ToolbarItem {
+        ToolbarItemGroup(placement: .automatic) {
             Button {
                 guard SharedReference.shared.norsync == false else { return }
                 guard allTasksAreHalted() == false else { return }
@@ -66,13 +62,11 @@ extension TasksView {
                 executetaskpath.append(Tasks(task: .summarizeddetailsview))
             } label: {
                 Label("Estimate", systemImage: "wand.and.stars")
-                    .labelStyle(.iconOnly)
+                    .labelStyle(.titleAndIcon)
                     .foregroundStyle(Color(.blue))
             }
             .help("Estimate (⌘E)")
-        }
 
-        ToolbarItem {
             Button {
                 guard SharedReference.shared.norsync == false else { return }
                 guard allTasksAreHalted() == false else { return }
@@ -96,10 +90,25 @@ extension TasksView {
                 }
             } label: {
                 Label("Synchronize", systemImage: "play.fill")
-                    .labelStyle(.iconOnly)
+                    .labelStyle(.titleAndIcon)
                     .foregroundStyle(Color(.blue))
             }
             .help("Synchronize (⌘R)")
+
+            if allTasksAreHalted() == false {
+                Button {
+                    if urlcommandestimateandsynchronize {
+                        urlcommandestimateandsynchronize = false
+                    } else {
+                        urlcommandestimateandsynchronize = true
+                    }
+                } label: {
+                    Label("Estimate & Sync", systemImage: "bolt.shield.fill")
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(Color(.yellow))
+                }
+                .help("Estimate & Synchronize")
+            }
         }
 
         ToolbarItem {
@@ -107,15 +116,11 @@ extension TasksView {
                 selecteduuids.removeAll()
                 reset()
             } label: {
-                Label("Reset estimates", systemImage: "clear")
-                    .labelStyle(.iconOnly)
+                Label("Reset", systemImage: "clear")
+                    .labelStyle(.titleAndIcon)
                     .foregroundStyle(thereareestimates ? Color(.red) : .primary)
             }
             .help("Reset estimates")
-        }
-
-        ToolbarItem {
-            Spacer()
         }
 
         Group {
@@ -199,29 +204,6 @@ extension TasksView {
                             .foregroundStyle(saveactualsynclogdata ? .green : .primary)
                     }
                     .help("Save actual synchronize log to logfile")
-                }
-            }
-        }
-
-        ToolbarItem {
-            Spacer()
-        }
-
-        Group {
-            if allTasksAreHalted() == false {
-                ToolbarItem {
-                    Button {
-                        if urlcommandestimateandsynchronize {
-                            urlcommandestimateandsynchronize = false
-                        } else {
-                            urlcommandestimateandsynchronize = true
-                        }
-                    } label: {
-                        Label("Estimate & Synchronize", systemImage: "bolt.shield.fill")
-                            .labelStyle(.iconOnly)
-                            .foregroundStyle(Color(.yellow))
-                    }
-                    .help("Estimate & Synchronize")
                 }
             }
         }
