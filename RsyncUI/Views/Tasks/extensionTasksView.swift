@@ -126,84 +126,69 @@ extension TasksView {
         Group {
             if showquicktask {
                 ToolbarItem {
-                    Button {
-                        guard selecteduuids.count > 0 else { return }
-                        guard allTasksAreHalted() == false else { return }
+                    Menu {
+                        Button {
+                            guard selecteduuids.count > 0 else { return }
+                            guard allTasksAreHalted() == false else { return }
 
-                        guard selecteduuids.count == 1 else {
-                            executetaskpath.append(Tasks(task: .summarizeddetailsview))
-                            return
-                        }
-
-                        if selecteduuids.count == 1 {
-                            guard selectedconfig?.task != SharedReference.shared.halted else {
+                            guard selecteduuids.count == 1 else {
+                                executetaskpath.append(Tasks(task: .summarizeddetailsview))
                                 return
                             }
+
+                            if selecteduuids.count == 1 {
+                                guard selectedconfig?.task != SharedReference.shared.halted else {
+                                    return
+                                }
+                            }
+
+                            if progressdetails.tasksAreEstimated(selecteduuids) {
+                                executetaskpath.append(Tasks(task: .dryrunonetaskalreadyestimated))
+                            } else {
+                                executetaskpath.append(Tasks(task: .onetaskdetailsview))
+                            }
+                        } label: {
+                            Label("Rsync output estimated task", systemImage: "text.magnifyingglass")
                         }
 
-                        if progressdetails.tasksAreEstimated(selecteduuids) {
-                            executetaskpath.append(Tasks(task: .dryrunonetaskalreadyestimated))
-                        } else {
-                            executetaskpath.append(Tasks(task: .onetaskdetailsview))
+                        Button {
+                            executetaskpath.append(Tasks(task: .quick_synchronize))
+                        } label: {
+                            Label("Quick synchronize", systemImage: "hare")
+                        }
+
+                        Button {
+                            executetaskpath.append(Tasks(task: .charts))
+                        } label: {
+                            Label("Charts", systemImage: "chart.bar.fill")
+                        }
+                        .disabled(selecteduuids.count != 1 || selectedconfig?.task == SharedReference.shared.syncremote)
+
+                        Button {
+                            activeSheet = .scheduledtasksview
+                        } label: {
+                            Label("Schedule", systemImage: "calendar.circle.fill")
+                        }
+
+                        Divider()
+
+                        Button {
+                            openWindow(id: "rsyncuilog")
+                        } label: {
+                            Label("View logfile", systemImage: "doc.plaintext")
+                        }
+
+                        Button {
+                            saveactualsynclogdata.toggle()
+                            SharedReference.shared.saveactualsynclogdata = saveactualsynclogdata
+                        } label: {
+                            Label("Save sync log to log file", systemImage: "square.and.arrow.down.fill")
                         }
                     } label: {
-                        Label("Rsync output estimated task", systemImage: "text.magnifyingglass")
+                        Label("More", systemImage: "ellipsis.circle")
                             .labelStyle(.iconOnly)
                     }
-                    .help("Rsync output estimated task")
-                }
-
-                ToolbarItem {
-                    Button {
-                        executetaskpath.append(Tasks(task: .quick_synchronize))
-                    } label: {
-                        Label("Quick synchronize", systemImage: "hare")
-                            .labelStyle(.iconOnly)
-                    }
-                    .help("Quick synchronize")
-                }
-
-                ToolbarItem {
-                    Button {
-                        executetaskpath.append(Tasks(task: .charts))
-                    } label: {
-                        Label("Charts", systemImage: "chart.bar.fill")
-                            .labelStyle(.iconOnly)
-                    }
-                    .help("Charts")
-                    .disabled(selecteduuids.count != 1 || selectedconfig?.task == SharedReference.shared.syncremote)
-                }
-
-                ToolbarItem {
-                    Button {
-                        activeSheet = .scheduledtasksview
-                    } label: {
-                        Label("Schedule", systemImage: "calendar.circle.fill")
-                            .labelStyle(.iconOnly)
-                    }
-                    .help("Schedule")
-                }
-
-                ToolbarItem {
-                    Button {
-                        openWindow(id: "rsyncuilog")
-                    } label: {
-                        Label("View logfile", systemImage: "doc.plaintext")
-                            .labelStyle(.iconOnly)
-                    }
-                    .help("View logfile")
-                }
-
-                ToolbarItem {
-                    Button {
-                        saveactualsynclogdata.toggle()
-                        SharedReference.shared.saveactualsynclogdata = saveactualsynclogdata
-                    } label: {
-                        Label("Save sync log to log file", systemImage: "square.and.arrow.down.fill")
-                            .labelStyle(.iconOnly)
-                            .foregroundStyle(saveactualsynclogdata ? .green : .primary)
-                    }
-                    .help("Save actual synchronize log to logfile")
+                    .help("More synchronize actions")
                 }
             }
         }
