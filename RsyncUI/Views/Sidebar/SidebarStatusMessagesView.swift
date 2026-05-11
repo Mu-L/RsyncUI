@@ -10,38 +10,53 @@ struct SidebarStatusMessagesView: View {
     let clearNotExecutedAfterWake: () -> Void
 
     var body: some View {
-        if newVersionAvailable {
-            MessageView(mytext: "New version available.\nSee About RsyncUI.", size: .caption2)
-                .padding([.bottom], -30)
-        }
+        VStack(alignment: .leading, spacing: 4) {
+            if newVersionAvailable {
+                Label("Update available", systemImage: "arrow.down.circle")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
 
-        if mountingVolumeNow {
-            MessageView(mytext: "Mounting volume, please wait", size: .caption2)
-                .padding([.bottom], -30)
-                .onAppear {
-                    Task {
-                        try? await Task.sleep(seconds: 2)
-                        mountingVolumeNow = false
+            if mountingVolumeNow {
+                Label("Mounting volume...", systemImage: "externaldrive")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(seconds: 2)
+                            mountingVolumeNow = false
+                        }
                     }
-                }
-        }
+            }
 
-        if timerIsActive {
-            MessageView(mytext: nextScheduleText, size: .caption2)
-                .padding([.bottom], -30)
-        }
+            if timerIsActive {
+                Label(nextScheduleText, systemImage: "calendar.badge.clock")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
 
-        if showNotExecutedAfterWake {
-            MessageView(mytext: "Scheduled tasks missed\nafter wake", size: .caption2)
-                .padding([.bottom], -30)
-                .onAppear {
-                    Task {
-                        try? await Task.sleep(seconds: 5)
-                        clearNotExecutedAfterWake()
+            if showNotExecutedAfterWake {
+                Label("Scheduled tasks missed", systemImage: "exclamationmark.triangle")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .onAppear {
+                        Task {
+                            try? await Task.sleep(seconds: 5)
+                            clearNotExecutedAfterWake()
+                        }
                     }
-                }
-        }
+            }
 
-        MessageView(mytext: rsyncVersionShort, size: .caption2)
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(.green)
+                    .frame(width: 6, height: 6)
+                Text(rsyncVersionShort)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 }

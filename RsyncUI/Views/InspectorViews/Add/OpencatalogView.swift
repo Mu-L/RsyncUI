@@ -14,17 +14,16 @@ struct OpencatalogView: View {
     let catalogs: Bool
 
     var body: some View {
-        Button(action: {
+        Button {
             isImporting = true
-        }, label: {
-            if catalogs {
-                Image(systemName: "folder.fill")
-                    .foregroundStyle(Color(.blue))
-            } else {
-                Image(systemName: "text.document.fill")
-                    .foregroundStyle(Color(.blue))
-            }
-        })
+        } label: {
+            Label("Browse", systemImage: catalogs ? "folder" : "doc")
+                .labelStyle(.iconOnly)
+                .font(.system(size: 12))
+                .frame(width: 28, height: 22)
+        }
+        .buttonStyle(.bordered)
+        .help("Browse...")
         .fileImporter(isPresented: $isImporting,
                       allowedContentTypes: [uutype],
                       onCompletion: { result in

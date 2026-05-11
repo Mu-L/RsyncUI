@@ -15,38 +15,33 @@ struct ConfigurationsTableDataView: View {
     var body: some View {
         Table(configurations ?? [], selection: $selecteduuids) {
             TableColumn("Synchronize ID") { data in
-                if data.parameter4?.isEmpty == false {
-                    if data.backupID.isEmpty == true {
-                        Text("No ID set")
-                            .foregroundStyle(.red)
+                HStack(spacing: 4) {
+                    if data.parameter4?.isEmpty == false {
+                        if data.backupID.isEmpty == true {
+                            Text("No ID set")
+                                .foregroundStyle(.red)
+                        } else {
+                            Text(data.backupID)
+                                .foregroundStyle(.red)
+                        }
                     } else {
-                        Text(data.backupID)
-                            .foregroundStyle(.red)
+                        if data.backupID.isEmpty == true {
+                            Text("No ID set")
+                                .foregroundStyle(.blue)
+                        } else {
+                            Text(data.backupID)
+                                .foregroundStyle(.blue)
+                        }
                     }
-                } else {
-                    if data.backupID.isEmpty == true {
-                        Text("No ID set")
-                            .foregroundStyle(.blue)
-                    } else {
-                        Text(data.backupID)
-                            .foregroundStyle(.blue)
-                    }
+
+                    ConfigurationTaskBadge(task: data.task)
                 }
             }
             .width(min: 90, max: 200)
 
-            TableColumn("Action") { data in
-                if data.task == SharedReference.shared.halted {
-                    Image(systemName: "stop.fill")
-                        .foregroundStyle(Color(.red))
-                } else {
-                    Text(data.task)
-                }
-            }
-            .width(max: 80)
-            TableColumn("Source folder", value: \.localCatalog)
+            TableColumn("Source", value: \.localCatalog)
                 .width(min: 80, max: 300)
-            TableColumn("Destination folder", value: \.offsiteCatalog)
+            TableColumn("Destination", value: \.offsiteCatalog)
                 .width(min: 80, max: 300)
             TableColumn("Server") { data in
                 if data.offsiteServer.count > 0 {
