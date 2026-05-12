@@ -47,14 +47,10 @@ struct SidebarStatusMessagesView: View {
                     }
             }
 
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(.green)
-                    .frame(width: 6, height: 6)
-                Text(rsyncVersionShort)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            Text(rsyncVersionShort)
+                .font(.caption2)
+                .foregroundStyle(.secondary).foregroundStyle(.secondary)
+            
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
