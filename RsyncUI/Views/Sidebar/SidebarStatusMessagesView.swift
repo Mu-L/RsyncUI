@@ -50,7 +50,6 @@ struct SidebarStatusMessagesView: View {
             Text(rsyncVersionShort)
                 .font(.caption2)
                 .foregroundStyle(.secondary).foregroundStyle(.secondary)
-            
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)

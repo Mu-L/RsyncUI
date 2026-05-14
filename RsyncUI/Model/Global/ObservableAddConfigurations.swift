@@ -42,6 +42,7 @@ final class ObservableAddConfigurations {
 
     var showsaveurls: Bool = false
 
+    /// THE BUG IS HERE
     func addConfig(_ profile: String?, _ configurations: [SynchronizeConfiguration]?) async -> [SynchronizeConfiguration]? {
         let getdata = NewTask(selectedrsynccommand.rawValue,
                               localcatalog.replacingOccurrences(of: "\"", with: ""),

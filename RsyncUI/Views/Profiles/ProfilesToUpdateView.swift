@@ -14,9 +14,7 @@ struct ProfilesToUpdateView: View {
     var body: some View {
         Table(allconfigurations) {
             TableColumn("Synchronize ID : profilename") { data in
-                
                 HStack(spacing: 4) {
-                    
                     let split = data.backupID.split(separator: " : ")
                     if split.count > 1 {
                         let left = Text(String(split[0]))
@@ -26,7 +24,7 @@ struct ProfilesToUpdateView: View {
                     } else {
                         Text(data.backupID)
                     }
-                    
+
                     ConfigurationTaskBadge(task: data.task)
                 }
             }

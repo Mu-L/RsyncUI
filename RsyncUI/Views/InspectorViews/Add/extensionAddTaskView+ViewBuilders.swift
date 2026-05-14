@@ -41,7 +41,7 @@ extension AddTaskView {
                     addConfig()
                     showAddPopover = false
                     newdata.resetForm()
-                }.disabled(!disableadd)
+                }
 
                 Spacer()
 

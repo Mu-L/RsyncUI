@@ -84,7 +84,7 @@ extension AddTaskView {
 
 extension AddTaskView {
     /// The verify returns true when data is OK
-    var disableadd: Bool {
+    var ddisableadd: Bool {
         VerifyObservableAddConfiguration(observed: newdata).verify()
     }
 }
