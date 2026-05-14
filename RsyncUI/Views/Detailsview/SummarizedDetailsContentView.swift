@@ -137,20 +137,24 @@ struct SummarizedDetailsContentView: View {
         Table(progressdetails.estimatedlist ?? [],
               selection: $selecteduuids) {
             TableColumn("Synchronize ID") { data in
-                if data.datatosynchronize {
-                    if data.backupID.isEmpty == true {
-                        Text("No ID set")
-                            .foregroundStyle(.blue)
+                HStack(spacing: 4) {
+                    if data.datatosynchronize {
+                        if data.backupID.isEmpty == true {
+                            Text("No ID set")
+                                .foregroundStyle(.blue)
+                        } else {
+                            Text(data.backupID)
+                                .foregroundStyle(.blue)
+                        }
                     } else {
-                        Text(data.backupID)
-                            .foregroundStyle(.blue)
+                        if data.backupID.isEmpty == true {
+                            Text("No ID set")
+                        } else {
+                            Text(data.backupID)
+                        }
                     }
-                } else {
-                    if data.backupID.isEmpty == true {
-                        Text("No ID set")
-                    } else {
-                        Text(data.backupID)
-                    }
+                    
+                    ConfigurationTaskBadge(task: data.task)
                 }
             }
             .width(min: 80, max: 120)
