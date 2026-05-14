@@ -14,20 +14,23 @@ struct ProfilesToUpdateView: View {
     var body: some View {
         Table(allconfigurations) {
             TableColumn("Synchronize ID : profilename") { data in
-                let split = data.backupID.split(separator: " : ")
-                if split.count > 1 {
-                    let left = Text(String(split[0]))
-                    let middle = Text(" : ")
-                    let right = Text(String(split[1])).foregroundStyle(.blue)
-                    Text("\(left)\(middle)\(right)")
-                } else {
-                    Text(data.backupID)
+                
+                HStack(spacing: 4) {
+                    
+                    let split = data.backupID.split(separator: " : ")
+                    if split.count > 1 {
+                        let left = Text(String(split[0]))
+                        let middle = Text(" : ")
+                        let right = Text(String(split[1])).foregroundStyle(.blue)
+                        Text("\(left)\(middle)\(right)")
+                    } else {
+                        Text(data.backupID)
+                    }
+                    
+                    ConfigurationTaskBadge(task: data.task)
                 }
             }
             .width(min: 150, max: 300)
-
-            TableColumn("Task", value: \.task)
-                .width(max: 80)
 
             TableColumn("Time last") { data in
                 var seconds: Double {
