@@ -17,11 +17,21 @@ struct EstimateTableView: View {
     var body: some View {
         Table(configurations) {
             TableColumn("Synchronize ID") { data in
-                if data.id == estimatinguuid {
-                    HStack {
-                        Image(systemName: "arrowshape.right.fill")
-                            .foregroundStyle(Color(.blue))
-
+                HStack(spacing: 4) {
+                    if data.id == estimatinguuid {
+                        HStack {
+                            Image(systemName: "arrowshape.right.fill")
+                                .foregroundStyle(Color(.blue))
+                            
+                            if data.backupID.isEmpty == true {
+                                Text("No ID set")
+                                    .foregroundStyle(color(uuid: data.id))
+                            } else {
+                                Text(data.backupID)
+                                    .foregroundStyle(color(uuid: data.id))
+                            }
+                        }
+                    } else {
                         if data.backupID.isEmpty == true {
                             Text("No ID set")
                                 .foregroundStyle(color(uuid: data.id))
@@ -30,29 +40,14 @@ struct EstimateTableView: View {
                                 .foregroundStyle(color(uuid: data.id))
                         }
                     }
-                } else {
-                    if data.backupID.isEmpty == true {
-                        Text("No ID set")
-                            .foregroundStyle(color(uuid: data.id))
-                    } else {
-                        Text(data.backupID)
-                            .foregroundStyle(color(uuid: data.id))
-                    }
+                    
+                    ConfigurationTaskBadge(task: data.task)
                 }
             }
             .width(min: 50, max: 150)
-            TableColumn("Action") { data in
-                if data.task == SharedReference.shared.halted {
-                    Image(systemName: "stop.fill")
-                        .foregroundStyle(Color(.red))
-                } else {
-                    Text(data.task)
-                }
-            }
-            .width(max: 80)
-            TableColumn("Source folder", value: \.localCatalog)
+            TableColumn("Source", value: \.localCatalog)
                 .width(min: 80, max: 300)
-            TableColumn("Destination folder", value: \.offsiteCatalog)
+            TableColumn("Destination", value: \.offsiteCatalog)
                 .width(min: 80, max: 300)
             TableColumn("Server") { data in
                 if data.offsiteServer.count > 0 {
