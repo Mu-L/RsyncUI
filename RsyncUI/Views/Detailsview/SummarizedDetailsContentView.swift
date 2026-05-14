@@ -154,7 +154,7 @@ struct SummarizedDetailsContentView: View {
                 }
             }
             .width(min: 80, max: 120)
-            TableColumn("Source folder", value: \.localCatalog)
+            TableColumn("Source", value: \.localCatalog)
                 .width(min: 100, max: 250)
             TableColumn("Server") { data in
                 if data.offsiteServer.count > 0 {
