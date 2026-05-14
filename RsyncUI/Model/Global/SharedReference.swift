@@ -50,7 +50,7 @@ final class SharedReference {
     /// A safety rule
     @ObservationIgnored var confirmexecute: Bool = false
     /// Duplicatecheck
-    @ObservationIgnored var duplicatecheck: Bool = false
+    @ObservationIgnored var duplicatecheck: Bool = true
     /// New version of RsyncUI discovered
     @ObservationIgnored var newversion: Bool = false
     /// Synchronize without timedelay URL-actions
