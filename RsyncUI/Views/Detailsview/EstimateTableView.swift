@@ -22,7 +22,7 @@ struct EstimateTableView: View {
                         HStack {
                             Image(systemName: "arrowshape.right.fill")
                                 .foregroundStyle(Color(.blue))
-                            
+
                             if data.backupID.isEmpty == true {
                                 Text("No ID set")
                                     .foregroundStyle(color(uuid: data.id))
@@ -40,7 +40,7 @@ struct EstimateTableView: View {
                                 .foregroundStyle(color(uuid: data.id))
                         }
                     }
-                    
+
                     ConfigurationTaskBadge(task: data.task)
                 }
             }

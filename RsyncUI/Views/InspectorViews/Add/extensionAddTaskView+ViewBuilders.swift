@@ -38,10 +38,12 @@ extension AddTaskView {
                 ConditionalGlassButton(systemImage: "plus",
                                        text: "Add",
                                        helpText: "Add task") {
-                    addConfig()
-                    showAddPopover = false
-                    newdata.resetForm()
-                }.disabled(!disableadd)
+                    Task { @MainActor in
+                        if await addConfig() {
+                            showAddPopover = false
+                        }
+                    }
+                }
 
                 Spacer()
 

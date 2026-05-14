@@ -10,25 +10,29 @@ import SwiftUI
 // MARK: - Configuration Actions
 
 extension AddTaskView {
-    func addConfig() {
+    @MainActor
+    func addConfig() async -> Bool {
         let profile = rsyncUIdata.profile
-        Task { @MainActor in
-            rsyncUIdata.configurations = await newdata.addConfig(profile, rsyncUIdata.configurations)
-            if SharedReference.shared.duplicatecheck {
-                if let configurations = rsyncUIdata.configurations {
-                    VerifyDuplicates(configurations)
-                }
+        let beforeCount = rsyncUIdata.configurations?.count ?? 0
+        rsyncUIdata.configurations = await newdata.addConfig(profile, rsyncUIdata.configurations)
+        if SharedReference.shared.duplicatecheck {
+            if let configurations = rsyncUIdata.configurations {
+                VerifyDuplicates(configurations)
             }
         }
+        return (rsyncUIdata.configurations?.count ?? 0) > beforeCount
     }
 
-    func validateAndUpdate() {
+    @MainActor
+    func validateAndUpdate() async -> Bool {
         let profile = rsyncUIdata.profile
-        Task { @MainActor in
-            rsyncUIdata.configurations = await newdata.updateConfig(profile, rsyncUIdata.configurations)
-            // Reset after Update
+        let selectedHiddenID = newdata.selectedconfig?.hiddenID
+        rsyncUIdata.configurations = await newdata.updateConfig(profile, rsyncUIdata.configurations)
+        let didUpdate = selectedHiddenID != nil && newdata.selectedconfig == nil
+        if didUpdate {
             clearSelection()
         }
+        return didUpdate
     }
 }
 
@@ -37,7 +41,9 @@ extension AddTaskView {
 extension AddTaskView {
     var updateButton: some View {
         ConditionalGlassButton(systemImage: "arrow.down", text: "Update", helpText: "Update task") {
-            validateAndUpdate()
+            Task { @MainActor in
+                _ = await validateAndUpdate()
+            }
         }
     }
 

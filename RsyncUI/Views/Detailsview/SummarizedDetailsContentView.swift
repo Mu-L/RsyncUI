@@ -153,7 +153,7 @@ struct SummarizedDetailsContentView: View {
                             Text(data.backupID)
                         }
                     }
-                    
+
                     ConfigurationTaskBadge(task: data.task)
                 }
             }

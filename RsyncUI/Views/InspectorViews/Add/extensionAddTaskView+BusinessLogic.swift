@@ -25,9 +25,20 @@ extension AddTaskView {
         case .localcatalogField: focusField = .remotecatalogField
         case .remotecatalogField: focusField = .remoteuserField
         case .remoteuserField: focusField = .remoteserverField
-        case .snapshotnumField: validateAndUpdate()
+        case .snapshotnumField:
+            Task { @MainActor in
+                _ = await validateAndUpdate()
+            }
         case .remoteserverField:
-            if newdata.selectedconfig == nil { addConfig() } else { validateAndUpdate() }
+            if newdata.selectedconfig == nil {
+                Task { @MainActor in
+                    _ = await addConfig()
+                }
+            } else {
+                Task { @MainActor in
+                    _ = await validateAndUpdate()
+                }
+            }
             focusField = nil
         default: return
         }
@@ -84,7 +95,7 @@ extension AddTaskView {
 
 extension AddTaskView {
     /// The verify returns true when data is OK
-    var disableadd: Bool {
+    var ddisableadd: Bool {
         VerifyObservableAddConfiguration(observed: newdata).verify()
     }
 }
