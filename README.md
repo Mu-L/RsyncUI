@@ -1,6 +1,6 @@
 # RsyncUI
 [![GitHub license](https://img.shields.io/github/license/rsyncOSX/RsyncUI)](https://github.com/rsyncOSX/RsyncUI/blob/main/Licence.MD)
-![GitHub Releases](https://img.shields.io/github/downloads/rsyncosx/RsyncUI/v2.9.8/total)
+![GitHub Releases](https://img.shields.io/github/downloads/rsyncosx/RsyncUI/v3.0.0/total)
 ![GitHub Releases](https://img.shields.io/github/downloads/rsyncosx/RsyncUI/v2.9.3/total)
 [![GitHub issues](https://img.shields.io/github/issues/rsyncOSX/RsyncUI)](https://github.com/rsyncOSX/RsyncUI/issues)
 
@@ -22,7 +22,7 @@ Or download directly from the [releases page](https://github.com/rsyncOSX/RsyncU
 
 ## Latest release
 
-- v2.9.8 — May 12, 2026 — in active development
+- v3.0.0 — May 14, 2026 — in active development
 
 ## Documentation
 
